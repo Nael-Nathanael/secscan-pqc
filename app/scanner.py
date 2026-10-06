@@ -186,12 +186,19 @@ def scan_target(raw, checks):
     if "cert" in checks:
         pct = 0
         c = pr.get("cert")
-        if isinstance(c, Exception) or c is None:
+        info = None
+        if isinstance(c, tuple):
+            der, trusted, verr = c
+            try:
+                info = describe_cert(der)
+            except ValueError as e:
+                details.append(("Sertifikat", f"tidak dapat diurai ({e})"))
+                _finding(findings, "crit", "Sertifikat tidak valid",
+                         "Sertifikat tidak sesuai standar X.509 dan ditolak klien modern. Terbitkan ulang dari CA.")
+        else:
             details.append(("Sertifikat", "tidak dapat diambil (TLS tidak merespons)"))
             _finding(findings, "crit", "Sertifikat tidak terbaca", "Server tidak menyelesaikan handshake TLS pada port ini.")
-        else:
-            der, trusted, verr = c
-            info = describe_cert(der)
+        if info:
             exp = info["not_after"]
             details += [
                 ("Sertifikat", info["subject"]),

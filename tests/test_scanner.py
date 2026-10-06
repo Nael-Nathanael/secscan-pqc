@@ -35,6 +35,33 @@ def probes(cert=None, trusted=True, versions=(TLS13,), groups=("X25519MLKEM768",
     return out
 
 
+def _tlvs(buf):
+    items, i = [], 0
+    while i < len(buf):
+        n, h = buf[i + 1], 2
+        if n & 0x80:
+            h += n & 0x7F
+            n = int.from_bytes(buf[i + 2:i + h], "big")
+        items.append((buf[i], buf[i + h:i + h + n]))
+        i += h + n
+    return items
+
+
+def _tlv(tag, body):
+    n = len(body)
+    size = bytes([n]) if n < 128 else bytes([0x80 | (n.bit_length() + 7) // 8]) + n.to_bytes((n.bit_length() + 7) // 8, "big")
+    return bytes([tag]) + size + body
+
+
+def ecdsa_cert_with_null_params():
+    """ECDSA cert whose signature AlgorithmIdentifier carries NULL params, as old Java emitted."""
+    plain, null = bytes.fromhex("300a06082a8648ce3d040302"), bytes.fromhex("300c06082a8648ce3d0403020500")
+    (_, body), = _tlvs(make_cert(ec.generate_private_key(ec.SECP256R1())))
+    (_, tbs), _alg, sig = _tlvs(body)
+    tbs = _tlv(0x30, tbs.replace(plain, null, 1))
+    return _tlv(0x30, tbs + null + _tlv(*sig))
+
+
 @pytest.fixture
 def scan(monkeypatch):
     def run(checks=tuple(scanner.CHECKS), **kw):
@@ -73,6 +100,13 @@ def test_expired_cert_scores_zero(scan):
 def test_untrusted_chain_costs_30(scan):
     key = ec.generate_private_key(ec.SECP256R1())
     assert pct(scan(["cert"], cert=make_cert(key), trusted=False), "cert") == scanner.CLASSICAL_CERT_PCT - 30
+
+
+def test_malformed_cert_is_critical_not_fatal(scan):
+    r = scan(["cert", "tls"], cert=ecdsa_cert_with_null_params())
+    assert pct(r, "cert") == 0
+    assert r["findings"][0]["level"] == "crit"
+    assert pct(r, "tls") == 100
 
 
 @pytest.mark.parametrize("versions,expected", [
