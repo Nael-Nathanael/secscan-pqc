@@ -55,7 +55,7 @@ def parse_target(raw):
     try:
         port = u.port or 443
     except ValueError:
-        raise TargetError("port tidak valid")
+        raise TargetError("port tidak valid") from None
     return host, port
 
 
@@ -64,7 +64,7 @@ def resolve_public(host):
     try:
         infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
     except socket.gaierror:
-        raise TargetError("domain tidak dapat di-resolve")
+        raise TargetError("domain tidak dapat di-resolve") from None
     addrs = []
     for fam, *_rest, sa in infos:
         ip = ipaddress.ip_address(sa[0])
@@ -247,7 +247,8 @@ def scan_target(raw, checks):
         else:
             pct = 0
             _finding(findings, "crit", "TANPA key exchange PQ di TLS 1.3",
-                     "Lalu lintas rentan harvest-now-decrypt-later — aktifkan X25519MLKEM768 (OpenSSL 3.5+, BoringSSL, Go 1.24+).")
+                     "Lalu lintas rentan harvest-now-decrypt-later — aktifkan X25519MLKEM768 "
+                     "(OpenSSL 3.5+, BoringSSL, Go 1.24+).")
         if not tls_reachable:
             pct = 0
         components.append(("kex", pct))
@@ -310,7 +311,8 @@ def scan_target(raw, checks):
             if "mlkem768x25519" in pq:
                 _finding(findings, "good", "SSH PQ KEX (mlkem768x25519-sha256)", "Server SSH sudah mendukung ML-KEM hybrid.")
             elif pq:
-                _finding(findings, "info", "SSH PQ KEX sntrup761", "Sudah tahan kuantum; tambahkan mlkem768x25519-sha256 (OpenSSH >= 9.9).")
+                _finding(findings, "info", "SSH PQ KEX sntrup761",
+                         "Sudah tahan kuantum; tambahkan mlkem768x25519-sha256 (OpenSSH >= 9.9).")
             else:
                 _finding(findings, "crit", "SSH tanpa PQ KEX", "Perbarui OpenSSH server >= 9.9 untuk mlkem768x25519-sha256.")
         components.append(("ssh", pct))
