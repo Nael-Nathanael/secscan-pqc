@@ -8,6 +8,7 @@ from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import report
@@ -23,6 +24,7 @@ CACHE_SIZE = 200
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 STATIC = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 _sem = asyncio.Semaphore(MAX_CONCURRENT_HOSTS)
 _scans: "OrderedDict[str, dict]" = OrderedDict()
@@ -71,6 +73,11 @@ async def _scan_one(target, checks):
 @app.get("/")
 def index():
     return FileResponse(os.path.join(STATIC, "index.html"))
+
+
+@app.get("/metodologi")
+def methodology():
+    return FileResponse(os.path.join(STATIC, "metodologi.html"))
 
 
 @app.get("/healthz")

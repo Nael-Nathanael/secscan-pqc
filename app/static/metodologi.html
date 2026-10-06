@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Metodologi &amp; landasan teori · SecScan PQC</title>
+<meta name="description" content="Cara SecScan PQC memindai dan menilai kesiapan kriptografi tahan kuantum, beserta landasan teorinya.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='15' fill='%232563eb'/><polygon points='22,19.5 16,23 10,19.5 10,12.5 16,9 22,12.5' fill='none' stroke='white' stroke-width='2'/></svg>">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<main>
+  <header>
+    <svg width="36" height="36" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#2563eb"/><polygon points="22,19.5 16,23 10,19.5 10,12.5 16,9 22,12.5" fill="none" stroke="#fff" stroke-width="2"/><circle cx="16" cy="16" r="2" fill="#fff"/></svg>
+    <div>
+      <h1>Metodologi &amp; landasan teori</h1>
+      <p>Apa yang dipindai, bagaimana skornya dihitung, dan kenapa. Status per Oktober 2026.</p>
+    </div>
+    <nav><a href="/">Scan</a><a href="/metodologi" aria-current="page">Metodologi &amp; teori</a></nav>
+  </header>
+
+  <div class="doc">
+    <section class="card">
+      <p class="callout"><b>Skor tertinggi yang bisa dicapai situs publik hari ini adalah 92, bukan 100.</b>
+        Nilai penuh untuk sertifikat butuh sertifikat ML-DSA atau SLH-DSA, dan belum ada CA publik yang menerbitkannya
+        untuk web. Situs yang sudah memakai ML-KEM, hanya TLS 1.3, dan tidak membuka SSH ke publik akan mendapat 92 (grade A).
+        Selisih 8 poin itu baru bisa ditutup ketika sertifikat PQC tersedia, diperkirakan mulai 2027.</p>
+      <nav class="toc" aria-label="Daftar isi">
+        <h2>Daftar isi</h2>
+        <ol>
+          <li><a href="#cakupan">Cakupan pemindaian</a></li>
+          <li><a href="#probe">Cara kerja tiap probe</a></li>
+          <li><a href="#skor">Cara menghitung skor</a></li>
+          <li><a href="#bobot">Alasan pembobotan</a></li>
+          <li><a href="#batasan">Batasan</a></li>
+          <li><a href="#dasar">Dasar kriptografi</a></li>
+          <li><a href="#ancaman">Ancaman komputer kuantum</a></li>
+          <li><a href="#qday">Seberapa dekat Q-Day</a></li>
+          <li><a href="#standar">Standar PQC</a></li>
+          <li><a href="#hybrid">Hybrid dan adopsi</a></li>
+          <li><a href="#sertifikat">Kenapa sertifikat tertinggal</a></li>
+          <li><a href="#tenggat">Tenggat waktu</a></li>
+          <li><a href="#perbaikan">Memperbaiki temuan</a></li>
+          <li><a href="#sumber">Sumber</a></li>
+        </ol>
+      </nav>
+    </section>
+
+    <section class="card" id="cakupan">
+      <h2>1. Cakupan pemindaian</h2>
+      <p>SecScan memeriksa sebuah host dari sisi luar, seperti yang dilihat browser atau klien SSH mana pun di internet.
+        Pemindaian bersifat read-only: alat ini hanya mengirim pesan pembuka protokol (TLS ClientHello, banner SSH)
+        dan membaca balasan pertama server. Tidak ada login, tidak ada data aplikasi, dan tidak ada percobaan serangan.</p>
+      <ul>
+        <li>Target berupa domain atau IP, dengan port opsional (<code>host:port</code>, default 443).</li>
+        <li>Domain di-resolve lalu alamat pertama (IPv4 bila ada) yang dipindai. Alamat privat, loopback, dan link-local ditolak
+          supaya alat ini tidak bisa dipakai menjangkau jaringan internal.</li>
+        <li>Empat pemeriksaan bisa dipilih: key exchange PQ, sertifikat, versi TLS, dan SSH (port 22 dan 2222).</li>
+        <li>Pindai hanya sistem milik sendiri atau yang sudah memberi izin.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="probe">
+      <h2>2. Cara kerja tiap probe</h2>
+      <h3>Versi TLS</h3>
+      <p>Untuk setiap versi (1.0, 1.1, 1.2, 1.3) dikirim satu ClientHello yang hanya menawarkan versi itu. Versi dianggap aktif
+        jika server membalas ServerHello dengan versi yang sama. Pesan dibuat manual byte demi byte, jadi hasilnya tidak
+        bergantung pada versi TLS yang didukung library di mesin pemindai.</p>
+      <h3>Key exchange pasca-kuantum (TLS 1.3)</h3>
+      <p>Setiap grup diuji sendiri-sendiri. ClientHello TLS 1.3 menawarkan tepat satu grup di <code>supported_groups</code>
+        dengan <code>key_share</code> kosong. Server yang mendukung grup itu wajib membalas HelloRetryRequest yang menyebut grup
+        tersebut (RFC 8446 §4.1.4); server yang tidak mendukung membalas alert. Dengan cara ini pemindai tidak perlu
+        mengimplementasikan ML-KEM sendiri.</p>
+      <div class="scroll"><table>
+        <thead><tr><th>Grup</th><th>Codepoint</th><th>Jenis</th></tr></thead>
+        <tbody>
+          <tr><td><code>X25519MLKEM768</code></td><td>0x11EC</td><td>Hybrid, standar (RFC 10024)</td></tr>
+          <tr><td><code>SecP256r1MLKEM768</code></td><td>0x11EB</td><td>Hybrid, standar (RFC 10024)</td></tr>
+          <tr><td><code>SecP384r1MLKEM1024</code></td><td>0x11ED</td><td>Hybrid, standar (RFC 10024)</td></tr>
+          <tr><td><code>MLKEM768</code>, <code>MLKEM1024</code></td><td>0x0201, 0x0202</td><td>ML-KEM murni</td></tr>
+          <tr><td><code>X25519Kyber768Draft00</code></td><td>0x6399</td><td>Kyber draft, sudah usang</td></tr>
+          <tr><td><code>X25519</code></td><td>0x001D</td><td>Klasik, sebagai pembanding</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Sertifikat</h3>
+      <p>Pemindai melakukan handshake TLS biasa dan mengambil sertifikat leaf: jenis dan ukuran kunci publik, algoritma tanda tangan,
+        dan tanggal kedaluwarsa. Handshake kedua memvalidasi rantai dan nama host terhadap trust store sistem.
+        OID ML-DSA-44/65/87 dan SLH-DSA dikenali sebagai sertifikat pasca-kuantum.</p>
+      <h3>SSH</h3>
+      <p>Port 22 dan 2222 dibuka, banner dibaca, lalu pemindai membaca pesan KEXINIT server. Pesan ini dikirim tanpa enkripsi sebelum
+        autentikasi dan berisi daftar algoritma key exchange dan host key yang didukung server.
+        Koneksi ditutup sebelum ada login.</p>
+    </section>
+
+    <section class="card" id="skor">
+      <h2>3. Cara menghitung skor</h2>
+      <p>Setiap pemeriksaan menghasilkan persentase 0–100. Skor komposit adalah rata-rata tertimbang dari pemeriksaan yang dipilih,
+        dibulatkan: <code>skor = Σ(bobot × persen) / Σ bobot</code>. Pemeriksaan yang tidak dipilih tidak ikut dihitung.</p>
+      <div class="scroll"><table>
+        <thead><tr><th>Pemeriksaan</th><th class="num">Bobot</th></tr></thead>
+        <tbody>
+          <tr><td>Key exchange PQ (TLS 1.3)</td><td class="num" data-weight="kex">100</td></tr>
+          <tr><td>Sertifikat</td><td class="num" data-weight="cert">60</td></tr>
+          <tr><td>SSH</td><td class="num" data-weight="ssh">50</td></tr>
+          <tr><td>Versi TLS</td><td class="num" data-weight="tls">40</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Key exchange PQ</h3>
+      <div class="scroll"><table>
+        <thead><tr><th>Kondisi</th><th class="num">Persen</th></tr></thead>
+        <tbody>
+          <tr><td>Menerima minimal satu grup ML-KEM standar (hybrid atau murni)</td><td class="num">100</td></tr>
+          <tr><td>Hanya menerima <code>X25519Kyber768Draft00</code></td><td class="num">50</td></tr>
+          <tr><td>Tidak ada grup PQ, atau TLS tidak merespons</td><td class="num">0</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Sertifikat</h3>
+      <div class="scroll"><table>
+        <thead><tr><th>Kunci sertifikat leaf</th><th class="num">Persen</th></tr></thead>
+        <tbody>
+          <tr><td>ML-DSA atau SLH-DSA</td><td class="num">100</td></tr>
+          <tr><td>Klasik yang masih kuat secara klasik: RSA ≥ 2048 bit, ECDSA ≥ 256 bit, Ed25519/Ed448</td><td class="num" data-cert-classical>65</td></tr>
+          <tr><td>RSA &lt; 2048 bit, ECDSA &lt; 256 bit, DSA, atau algoritma tak dikenal</td><td class="num">20</td></tr>
+          <tr><td>Rantai tidak tepercaya</td><td class="num">−30</td></tr>
+          <tr><td>Kedaluwarsa</td><td class="num">0</td></tr>
+        </tbody>
+      </table></div>
+      <p>Semua kunci klasik mendapat nilai yang sama. Algoritma Shor memecahkan RSA dan ECC sama-sama, dan memperbesar kunci RSA
+        ke 3072 atau 4096 bit tidak menambah ketahanan kuantum yang berarti. Skor yang lebih tinggi untuk RSA besar akan
+        mendorong migrasi ke arah yang salah.</p>
+
+      <h3>Versi TLS</h3>
+      <div class="scroll"><table>
+        <thead><tr><th>Kondisi</th><th class="num">Poin (dari 40)</th></tr></thead>
+        <tbody>
+          <tr><td>TLS 1.3 aktif</td><td class="num">+25</td></tr>
+          <tr><td>TLS 1.3 aktif dan TLS 1.2 nonaktif</td><td class="num">+15</td></tr>
+          <tr><td>TLS 1.0 atau 1.1 masih aktif (RFC 8996)</td><td class="num">−10</td></tr>
+        </tbody>
+      </table></div>
+      <p>Persen = poin ÷ 40. Contoh: TLS 1.3 saja = 100%; TLS 1.2 + 1.3 = 62%; tanpa TLS 1.3 = 0%.</p>
+
+      <h3>SSH</h3>
+      <div class="scroll"><table>
+        <thead><tr><th>Kondisi</th><th class="num">Nilai</th></tr></thead>
+        <tbody>
+          <tr><td>Port 22 dan 2222 tertutup</td><td class="num">100%</td></tr>
+          <tr><td>Port terbuka tapi KEXINIT tidak terbaca</td><td class="num">50%</td></tr>
+          <tr><td>Mendukung KEX PQ (<code>mlkem768x25519-sha256</code> atau <code>sntrup761x25519-sha512</code>)</td><td class="num">+25 poin</td></tr>
+          <tr><td>Host key <code>ssh-ed25519</code> tersedia</td><td class="num">+15 poin</td></tr>
+          <tr><td>Tidak ada host key RSA</td><td class="num">+10 poin</td></tr>
+        </tbody>
+      </table></div>
+      <p>Untuk port terbuka, persen = poin ÷ 50.</p>
+
+      <h3>Grade dan status PQC</h3>
+      <div class="scroll"><table>
+        <thead><tr><th>Grade</th><th class="num">Skor</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge gA">A</span></td><td class="num">90–100</td></tr>
+          <tr><td><span class="badge gB">B</span></td><td class="num">80–89</td></tr>
+          <tr><td><span class="badge gC">C</span></td><td class="num">65–79</td></tr>
+          <tr><td><span class="badge gD">D</span></td><td class="num">50–64</td></tr>
+          <tr><td><span class="badge gE">E</span></td><td class="num">0–49</td></tr>
+        </tbody>
+      </table></div>
+      <ul>
+        <li><b>SIAP PQC</b>: key exchange dan sertifikat sama-sama 100%.</li>
+        <li><b>SEBAGIAN</b>: key exchange sudah PQ, sertifikat masih klasik. Ini kondisi terbaik yang bisa dicapai situs publik hari ini.</li>
+        <li><b>BELUM SIAP</b>: key exchange belum PQ.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="bobot">
+      <h2>4. Alasan pembobotan</h2>
+      <ul>
+        <li><b>Key exchange (100)</b> mendapat bobot terbesar karena ancamannya sudah berjalan sekarang. Lalu lintas yang direkam hari ini
+          bisa dibuka setelah komputer kuantum tersedia (<i>harvest now, decrypt later</i>). Pemilik situs juga bisa memperbaikinya
+          hari ini dengan update software.</li>
+        <li><b>Sertifikat (60)</b> melindungi identitas server. Tanda tangan lama tidak bisa dipalsukan mundur, jadi ancamannya baru nyata
+          saat komputer kuantum ada. Pemilik situs juga belum bisa berbuat banyak sampai CA menerbitkan sertifikat PQC.</li>
+        <li><b>SSH (50)</b> adalah pintu masuk administrasi. Port SSH yang terbuka ke publik memperluas permukaan serangan, jadi menutupnya
+          dinilai paling tinggi.</li>
+        <li><b>Versi TLS (40)</b> adalah prasyarat: key exchange PQ hanya ada di TLS 1.3, dan TLS 1.2 yang masih aktif membuka jalan bagi
+          klien untuk turun ke key exchange klasik.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="batasan">
+      <h2>5. Batasan</h2>
+      <ul>
+        <li>Hanya satu alamat IP per target yang dipindai. Host dengan banyak IP atau load balancer bisa memberi hasil berbeda per node.</li>
+        <li>Situs di belakang CDN atau reverse proxy dinilai dari edge-nya, bukan dari server asal.</li>
+        <li>Yang diperiksa hanya permukaan publik: HTTPS dan SSH. VPN, jaringan internal, token aplikasi (JWT), data tersimpan,
+          HSM, dan penandatanganan firmware tidak terlihat dari luar dan perlu inventaris kriptografi (CBOM) tersendiri.</li>
+        <li>Hanya sertifikat leaf yang dinilai; CA perantara dan root belum ikut dinilai.</li>
+        <li>Firewall atau rate limit bisa memblokir probe dan membuat fitur terlihat tidak aktif.</li>
+        <li>Hasil adalah potret saat pemindaian dilakukan.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="dasar">
+      <h2>6. Dasar kriptografi</h2>
+      <p>Kriptografi <b>simetris</b> memakai satu kunci yang sama di kedua pihak. Cepat, jadi dipakai untuk mengunci data dalam jumlah besar.
+        AES-256 dan ChaCha20 termasuk jenis ini.</p>
+      <p>Kriptografi <b>asimetris</b> (public-key) memakai sepasang kunci: kunci publik boleh disebar, kunci privat dirahasiakan.
+        Jenis ini lambat, tapi bisa bertukar kunci dengan pihak asing lewat jalur terbuka (<i>key exchange</i>) dan membuat
+        tanda tangan digital. RSA dan ECC termasuk jenis ini; ECDH, ECDSA, X25519, dan Ed25519 adalah varian ECC.</p>
+      <p>Saat browser membuka situs HTTPS, terjadi tiga langkah:</p>
+      <ol>
+        <li>Browser dan server menyepakati kunci AES rahasia memakai ECC atau RSA (key exchange). Diperiksa oleh probe <i>key exchange PQ</i>.</li>
+        <li>Server menunjukkan sertifikat yang ditandatangani RSA atau ECDSA. Diperiksa oleh probe <i>sertifikat</i>.</li>
+        <li>Data dikirim dalam keadaan terkunci AES.</li>
+      </ol>
+      <p>Komputer kuantum mengancam langkah 1 dan 2. Brankasnya (AES-256) tetap kuat; yang rentan adalah amplop tempat kunci brankas dikirim.</p>
+    </section>
+
+    <section class="card" id="ancaman">
+      <h2>7. Ancaman komputer kuantum</h2>
+      <p><b>Algoritma Shor</b> (1994) memfaktorkan bilangan besar dan memecahkan soal kurva eliptis. Dengan komputer kuantum yang cukup besar,
+        RSA dan ECC patah total, berapa pun ukuran kuncinya. <b>Algoritma Grover</b> (1996) hanya mempercepat tebak-tebakan kunci:
+        AES-256 tetap setara 128-bit, dan itu masih mustahil ditebak.</p>
+      <div class="scroll"><table>
+        <thead><tr><th>Algoritma</th><th>Nasibnya</th><th>Tindakan</th></tr></thead>
+        <tbody>
+          <tr><td>RSA, ECC (ECDH, X25519)</td><td>Patah</td><td>Ganti ke ML-KEM, hybrid dulu</td></tr>
+          <tr><td>Tanda tangan RSA, ECDSA</td><td>Patah</td><td>Ganti ke ML-DSA atau SLH-DSA</td></tr>
+          <tr><td>AES-128</td><td>Masih aman menurut NIST</td><td>AES-256 untuk data rahasia jangka panjang</td></tr>
+          <tr><td>AES-256, ChaCha20</td><td>Aman</td><td>Tidak perlu diubah</td></tr>
+          <tr><td>SHA-256, SHA-3</td><td>Aman, sedikit melemah</td><td>SHA-384 ke atas untuk jangka panjang</td></tr>
+        </tbody>
+      </table></div>
+      <p><b>Harvest now, decrypt later</b>: penyerang merekam data terenkripsi hari ini dan menyimpannya sampai komputer kuantum
+        yang cukup besar (CRQC) tersedia. Data yang harus rahasia lama, seperti rekam medis, data kependudukan, dan data finansial,
+        sudah terancam sekarang. Untuk tanda tangan, ancamannya <b>trust now, forge later</b>: perangkat berumur panjang harus
+        menerima tanda tangan PQC sejak awal.</p>
+      <p><b>Pertidaksamaan Mosca</b>: jika X (berapa lama data harus rahasia) + Y (lama migrasi, biasanya 5–15 tahun) &gt; Z (sisa waktu sampai Q-Day),
+        migrasi sudah terlambat.</p>
+    </section>
+
+    <section class="card" id="qday">
+      <h2>8. Seberapa dekat Q-Day</h2>
+      <p>Perkiraan sumber daya untuk memecahkan kripto terus turun:</p>
+      <div class="scroll"><table>
+        <thead><tr><th>Kapan</th><th>Siapa</th><th>Target</th><th class="num">Qubit fisik</th><th class="num">Waktu</th></tr></thead>
+        <tbody>
+          <tr><td>2019</td><td>Gidney &amp; Ekerå (Google)</td><td>RSA-2048</td><td class="num">~20 juta</td><td class="num">~8 jam</td></tr>
+          <tr><td>Mei 2025</td><td>Gidney (Google)</td><td>RSA-2048</td><td class="num">&lt; 1 juta</td><td class="num">&lt; 1 minggu</td></tr>
+          <tr><td>Feb 2026</td><td>Iceberg Quantum</td><td>RSA-2048</td><td class="num">&lt; 100 ribu</td><td class="num">–</td></tr>
+          <tr><td>Mar 2026</td><td>Google Quantum AI, Stanford, dkk.</td><td>ECC-256</td><td class="num">&lt; 500 ribu</td><td class="num">~9 menit</td></tr>
+        </tbody>
+      </table></div>
+      <p>Dua angka terakhir berasal dari simulasi dan mengandaikan hardware yang lebih maju dari yang ada sekarang. ECC ternyata lebih mudah
+        dipecahkan daripada RSA, sekitar 1.200–1.450 qubit logis. Mesin terbaik tahun 2026 baru punya sekitar 50–100 qubit logis.
+        Jaraknya masih jauh, tapi menyempit lebih cepat dari perkiraan beberapa tahun lalu. RSA-2048 belum pernah dipecahkan,
+        dan rekor Shor yang jujur baru memfaktorkan angka 21.</p>
+    </section>
+
+    <section class="card" id="standar">
+      <h2>9. Standar PQC</h2>
+      <p>PQC adalah matematika baru yang tetap sulit bagi komputer kuantum, dan berjalan di CPU biasa lewat update software.
+        NIST memilihnya lewat kompetisi terbuka 2016–2024 dengan 82 kandidat. Rainbow dan SIKE dipatahkan di tengah jalan (2022)
+        dengan komputer biasa, sebuah pengingat bahwa algoritma baru perlu diuji lama.</p>
+      <div class="scroll"><table>
+        <thead><tr><th>Nama</th><th>Standar</th><th>Nama lama</th><th>Fungsi</th><th>Status Okt 2026</th></tr></thead>
+        <tbody>
+          <tr><td>ML-KEM</td><td>FIPS 203</td><td>Kyber</td><td>Tukar kunci</td><td>Final 2024</td></tr>
+          <tr><td>ML-DSA</td><td>FIPS 204</td><td>Dilithium</td><td>Tanda tangan utama</td><td>Final 2024</td></tr>
+          <tr><td>SLH-DSA</td><td>FIPS 205</td><td>SPHINCS+</td><td>Tanda tangan cadangan (hash)</td><td>Final 2024</td></tr>
+          <tr><td>FN-DSA</td><td>FIPS 206</td><td>Falcon</td><td>Tanda tangan kecil</td><td>Draft belum terbit</td></tr>
+          <tr><td>HQC</td><td>FIPS 207</td><td>–</td><td>Tukar kunci cadangan</td><td>Dipilih Mar 2025, draft belum terbit</td></tr>
+        </tbody>
+      </table></div>
+      <p>Angka di belakang nama menunjukkan tingkat kekuatan: ML-KEM-512/768/1024 setara AES-128/192/256, dan ML-DSA-44/65/87 mengikuti pola yang sama.</p>
+    </section>
+
+    <section class="card" id="hybrid">
+      <h2>10. Hybrid dan adopsi</h2>
+      <p>Hybrid memasang dua gembok sekaligus: X25519 dan ML-KEM. Kunci akhir diturunkan dari keduanya, jadi penyerang harus membuka
+        dua-duanya. Jika ML-KEM ternyata cacat, X25519 masih melindungi; jika komputer kuantum datang, ML-KEM masih melindungi.
+        <code>X25519MLKEM768</code> kini standar IETF (RFC 10024, Agustus 2026). BSSN menyarankan hybrid "DAN" seperti ini.</p>
+      <ul>
+        <li>Chrome, Edge, Firefox, dan Safari memakai hybrid ML-KEM secara otomatis.</li>
+        <li>Di jaringan Cloudflare, porsi lalu lintas browser yang memakai PQC sekitar 70% (September 2026), tapi hanya sekitar 15% server asal yang mendukungnya.</li>
+        <li>OpenSSL 3.5+ dan Go 1.24+ menawarkan <code>X25519MLKEM768</code> secara default; BoringSSL, AWS-LC, rustls, dan Java juga mendukungnya.</li>
+        <li>OpenSSH 10 memakai <code>mlkem768x25519-sha256</code> sebagai default.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="sertifikat">
+      <h2>11. Kenapa sertifikat tertinggal</h2>
+      <p>Tukar kunci cukup diperbarui di dua sisi koneksi. Sertifikat melibatkan seluruh rantai kepercayaan internet (PKI): CA, browser, dan server.
+        Masalah utamanya ukuran:</p>
+      <div class="scroll"><table>
+        <thead><tr><th>Algoritma</th><th class="num">Kunci publik (byte)</th><th class="num">Tanda tangan (byte)</th></tr></thead>
+        <tbody>
+          <tr><td>ECDSA P-256</td><td class="num">64</td><td class="num">~64–72</td></tr>
+          <tr><td>RSA-2048</td><td class="num">256</td><td class="num">256</td></tr>
+          <tr><td>ML-DSA-44</td><td class="num">1.312</td><td class="num">2.420</td></tr>
+          <tr><td>ML-DSA-65</td><td class="num">1.952</td><td class="num">3.309</td></tr>
+          <tr><td>SLH-DSA-128s</td><td class="num">32</td><td class="num">7.856</td></tr>
+        </tbody>
+      </table></div>
+      <p>Satu handshake HTTPS memuat sekitar lima tanda tangan, jadi sertifikat ML-DSA bisa menambah lebih dari 10 KB per koneksi.
+        Solusi yang disiapkan adalah <b>Merkle Tree Certificates</b>: banyak sertifikat ditandatangani bersama dengan satu tanda tangan.
+        Let's Encrypt menjalankan uji coba akhir 2026 dan produksi 2027; Cloudflare menjadi penerbit sertifikat PQC mulai 2027.
+        Sampai saat itu, skor sertifikat 65% adalah nilai maksimum yang realistis.</p>
+    </section>
+
+    <section class="card" id="tenggat">
+      <h2>12. Tenggat waktu</h2>
+      <ul>
+        <li><b>NIST IR 8547</b> (draft): kekuatan 112-bit seperti RSA-2048 usang setelah 2030; semua RSA dan ECC dilarang setelah 2035.</li>
+        <li><b>Amerika Serikat</b>: Perintah Presiden 14412 (Juni 2026) menargetkan tukar kunci PQC 31 Desember 2030 dan tanda tangan PQC
+          31 Desember 2031 untuk sistem bernilai tinggi; memo OMB M-26-15 menargetkan migrasi selesai 2035.</li>
+        <li><b>NSA CNSA 2.0</b>: ML-KEM-1024 dan ML-DSA-87 untuk sistem keamanan nasional; semua sistem 2035.</li>
+        <li><b>Uni Eropa dan Inggris</b>: infrastruktur kritis sekitar 2030–2031, selesai 2035.</li>
+        <li><b>Indonesia</b>: BSSN menerbitkan Panduan Migrasi ke Post-Quantum Cryptography v1.0 (Desember 2025), menyarankan
+          ML-KEM-1024 dan ML-DSA-87 dengan hybrid, dan sedang menyusun peta jalan nasional lewat gugus tugas (2026).
+          Daftar algoritma kriptografi resmi belum memuat PQC.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="perbaikan">
+      <h2>13. Memperbaiki temuan</h2>
+      <h3>Key exchange PQ tidak aktif</h3>
+      <p>Perbarui stack TLS. OpenSSL 3.5+ dan Go 1.24+ sudah menawarkan <code>X25519MLKEM768</code> secara default. Untuk nginx dengan OpenSSL 3.5+:</p>
+      <pre><code>ssl_protocols TLSv1.3;
+ssl_ecdh_curve X25519MLKEM768:X25519:prime256v1;</code></pre>
+      <p>Caddy 2.10+ sudah mengaktifkannya tanpa konfigurasi. Situs di belakang Cloudflare mendapatkannya di edge.</p>
+      <h3>TLS 1.2 atau lebih lama masih aktif</h3>
+      <p>Matikan TLS 1.0 dan 1.1 sekarang. Matikan TLS 1.2 setelah memastikan tidak ada klien lama yang masih butuh
+        (perangkat Android lama, sistem tertanam, integrasi B2B).</p>
+      <h3>SSH tanpa KEX PQ atau dengan host key RSA</h3>
+      <p>Perbarui ke OpenSSH 9.9+ untuk <code>mlkem768x25519-sha256</code>, hapus host key RSA dan pakai ed25519, atau tutup port SSH dari
+        internet dan akses lewat VPN atau tunnel.</p>
+      <h3>Sertifikat klasik</h3>
+      <p>Belum bisa diperbaiki untuk situs publik. Yang bisa dilakukan sekarang: pastikan otomatisasi penerbitan sertifikat
+        (ACME) siap mengganti algoritma, catat semua sertifikat di inventaris, dan tanyakan roadmap PQC ke CA.
+        Jangan pindah ke RSA-4096 dengan alasan kuantum.</p>
+    </section>
+
+    <section class="card refs" id="sumber">
+      <h2>14. Sumber</h2>
+      <ol>
+        <li><a href="https://csrc.nist.gov/pubs/fips/203/final">NIST FIPS 203: ML-KEM</a> (2024)</li>
+        <li><a href="https://csrc.nist.gov/pubs/fips/204/final">NIST FIPS 204: ML-DSA</a> (2024)</li>
+        <li><a href="https://csrc.nist.gov/pubs/fips/205/final">NIST FIPS 205: SLH-DSA</a> (2024)</li>
+        <li><a href="https://csrc.nist.gov/pubs/ir/8547/ipd">NIST IR 8547 (draft): Transition to Post-Quantum Cryptography Standards</a> (2024)</li>
+        <li><a href="https://www.nist.gov/news-events/news/2025/09/recommendations-key-encapsulation-mechanisms-nist-publishes-sp-800-227">NIST SP 800-227: Recommendations for KEMs</a> (2025)</li>
+        <li><a href="https://www.nist.gov/news-events/news/2025/03/nist-selects-hqc-fifth-algorithm-post-quantum-encryption">NIST memilih HQC</a> (Maret 2025)</li>
+        <li><a href="https://www.rfc-editor.org/rfc/rfc10024">RFC 10024: hybrid ML-KEM untuk TLS 1.3</a> (Agustus 2026)</li>
+        <li><a href="https://www.rfc-editor.org/rfc/rfc8446#section-4.1.4">RFC 8446 §4.1.4: HelloRetryRequest</a></li>
+        <li><a href="https://www.rfc-editor.org/rfc/rfc8996">RFC 8996: TLS 1.0 dan 1.1 dinyatakan usang</a></li>
+        <li><a href="https://www.bssn.go.id/media/uploads/2026/01/SK.07.03-2025-007-Panduan-Migrasi-ke-Post-Quantum-Cryptography-versi-1.0.pdf">BSSN: Panduan Migrasi ke Post-Quantum Cryptography v1.0</a> (Desember 2025)</li>
+        <li><a href="https://www.bssn.go.id/daftar-algoritma-kriptografi-indonesia/">BSSN: Daftar Algoritma Kriptografi Indonesia</a></li>
+        <li><a href="https://www.whitehouse.gov/wp-content/uploads/2026/06/M-26-15-Execution-of-the-Migration-to-Post-Quantum-Cryptography.pdf">OMB M-26-15: Execution of the Migration to Post-Quantum Cryptography</a> (Juni 2026)</li>
+        <li><a href="https://arxiv.org/abs/2505.15917">Gidney: RSA-2048 dengan kurang dari sejuta qubit</a> (2025)</li>
+        <li><a href="https://arxiv.org/abs/2602.11457">Webster dkk. (Iceberg Quantum): RSA-2048 dengan kurang dari 100 ribu qubit</a> (2026)</li>
+        <li><a href="https://arxiv.org/abs/2603.28846">Babbush dkk. (Google Quantum AI): ECC-256 dengan kurang dari 500 ribu qubit</a> (2026)</li>
+        <li><a href="https://www.evolutionq.com/publications/quantum-threat-timeline-research-report-2025">Global Risk Institute: Quantum Threat Timeline Report 2025</a></li>
+        <li><a href="https://letsencrypt.org/2026/06/03/pq-certs">Let's Encrypt: rencana sertifikat pasca-kuantum</a> (2026)</li>
+        <li><a href="https://radar.cloudflare.com/post-quantum">Cloudflare Radar: adopsi pasca-kuantum</a></li>
+        <li><a href="https://openssl-library.org/news/openssl-3.5-notes/">OpenSSL 3.5 release notes</a> (2025)</li>
+        <li><a href="https://www.openssh.com/releasenotes.html">OpenSSH release notes</a></li>
+      </ol>
+    </section>
+  </div>
+  <footer>SecScan PQC · <a href="https://github.com/Nael-Nathanael/secscan-pqc">kode sumber</a> (Apache-2.0)</footer>
+</main>
+</body>
+</html>
