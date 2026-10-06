@@ -18,7 +18,7 @@
       <a href="/" aria-current="page">Periksa</a>
       <a href="#membaca">Membaca hasil</a>
       <a href="/metodologi">Metode</a>
-      <a href="https://github.com/Nael-Nathanael/secscan-pqc">Kode sumber</a>
+      <a href="https://github.com/Nael-Nathanael/secscan-pqc">GitHub</a>
     </nav>
   </div>
 </header>
@@ -222,7 +222,7 @@ ssl_ecdh_curve X25519MLKEM768:X25519:prime256v1;</code></pre>
 
 <script type="application/json" id="sample">
 {"host":"miraestudio.id","port":443,"ip":"172.67.164.162","score":92,"grade":"A","pqc_status":"SEBAGIAN","duration":6.1,
- "scanned_at":"2026-10-06T12:01:15+07:00",
+ "scanned_at":"2026-10-06T12:09:50+07:00",
  "components":[
   {"key":"cert","label":"Sertifikat","max":60,"pct":65,"result":"ECDSA 256-bit","ref":"ML-DSA atau SLH-DSA"},
   {"key":"kex","label":"Kex PQ","max":100,"pct":100,"result":"X25519MLKEM768","ref":"ML-KEM standar, mis. X25519MLKEM768"},
@@ -256,7 +256,7 @@ function sheet(r, { no, sample, anchors, pdf }) {
   const host = esc((r.host || r.target) + (r.port && r.port !== 443 ? ':' + r.port : ''));
   const head = `<div class="sheet-head">
       <div><div class="sheet-title">Hasil pemeriksaan kesiapan PQC</div>
-        <div class="sheet-sub">Diperiksa dari luar, read-only</div></div>
+        <div class="sheet-sub">Diperiksa dari luar, read&#8209;only</div></div>
       <div class="sheet-no">No. ${esc(no)}${sample ? '<br><span class="sample-tag">CONTOH</span>' : ''}</div>
     </div>`;
   if (r.error) {

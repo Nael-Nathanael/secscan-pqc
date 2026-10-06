@@ -64,8 +64,9 @@ p { text-wrap: pretty; }
 .letterhead nav a:hover, .letterhead nav a[aria-current] { color: var(--teal); text-decoration: underline; }
 @media (max-width: 600px) {
   .letterhead .wrap { gap: 6px 12px; }
-  .letterhead nav { margin-left: 0; width: 100%; flex-wrap: nowrap; gap: 18px; overflow-x: auto; font-size: 14px; white-space: nowrap; }
+  .letterhead nav { margin-left: 0; width: 100%; flex-wrap: nowrap; gap: 16px; font-size: 14px; white-space: nowrap; }
 }
+@media (max-width: 420px) { .sheet-title { font-size: 13px; letter-spacing: .03em; } }
 
 /* First view: sheet + slip */
 .intro { padding-block: clamp(20px, 3vw, 32px) clamp(14px, 2vw, 20px); }

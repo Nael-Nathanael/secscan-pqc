@@ -71,6 +71,7 @@ S_CELL = _s("cell", fontSize=9, leading=11.5)
 S_CELL_MUTED = _s("cellm", fontSize=8.5, leading=11, textColor=MUTED)
 S_CELL_MONO = _s("cellmono", fontName="Mono", fontSize=9, leading=11.5)
 S_CELL_MONO_B = _s("cellmonob", fontName="Mono-Bold", fontSize=9, leading=11.5)
+S_CELL_MONO_OK = _s("cellmonook", fontName="Mono", fontSize=9, leading=11.5, textColor=TEAL)
 S_NUM = _s("num", fontName="Mono", fontSize=9, leading=11.5, alignment=TA_RIGHT)
 S_TOTAL = _s("total", fontName="Sans-Bold", fontSize=9.5, leading=12, alignment=TA_RIGHT)
 S_SCORE = _s("score", fontName="Mono-Bold", fontSize=22, leading=24, alignment=TA_RIGHT)
@@ -147,7 +148,7 @@ def _results(r):
     rows = [head]
     for c in comps:
         rows.append([Paragraph(NAMES[c["key"]], S_CELL),
-                     Paragraph(_esc(c["result"]), S_CELL_MONO_B if c["pct"] < 100 else S_CELL_MONO),
+                     Paragraph(_esc(c["result"]), S_CELL_MONO_B if c["pct"] < 100 else S_CELL_MONO_OK),
                      Paragraph(_esc(c["ref"]), S_CELL_MUTED),
                      Paragraph(str(c["pct"]), S_NUM), _Flag(c["pct"]), Paragraph(str(c["max"]), S_NUM)])
     status = STATUS.get(r["pqc_status"], r["pqc_status"])
