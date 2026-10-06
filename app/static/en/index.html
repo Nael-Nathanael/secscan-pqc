@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SecScan PQC: check a server's post-quantum readiness</title>
+<meta name="description" content="Check how ready a server is for quantum computers, then learn how to read the result: ML-KEM key exchange, certificates, TLS versions and SSH.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='5' y='2' width='22' height='28' fill='white' stroke='%231d2321' stroke-width='2'/><rect x='5' y='2' width='22' height='7' fill='%2300705f'/><path d='M9 15h14M9 20h14M9 25h9' stroke='%231d2321' stroke-width='2'/></svg>">
+<link rel="preload" href="/static/fonts/atkinson-next.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/static/app.css?v=ASSET">
+<link rel="alternate" hreflang="id" href="https://sec-scan.miraestudio.id/">
+<link rel="alternate" hreflang="en" href="https://sec-scan.miraestudio.id/en">
+<link rel="alternate" hreflang="x-default" href="https://sec-scan.miraestudio.id/">
+</head>
+<body>
+<header class="letterhead">
+  <div class="wrap">
+    <a class="brand" href="/en"><span class="brand-code">PQ</span><span class="brand-name">SecScan PQC</span></a>
+    <span class="brand-by">by <a href="https://miraestudio.id">MiraeStudio.id</a></span>
+    <nav aria-label="Main">
+      <a href="/en" aria-current="page">Check</a>
+      <a href="#reading">Reading results</a>
+      <a href="/en/methodology">Method</a>
+      <a href="https://github.com/Nael-Nathanael/secscan-pqc">GitHub</a>
+      <a href="/" hreflang="id" lang="id" aria-label="Bahasa Indonesia">ID</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="wrap intro">
+    <h1>How ready is your server for quantum computers?</h1>
+    <p>Each check is compared with its reference value. The sample below is the real result for our own site,
+      miraestudio.id, with <a href="/static/contoh/miraestudio-id-en.pdf?v=ASSET">its PDF report</a>.</p>
+  </section>
+
+  <div class="wrap desk">
+    <div class="sheets" id="sheets" aria-live="polite" data-sample-no="SAMPLE01-1" data-sample-pdf="/static/contoh/miraestudio-id-en.pdf?v=ASSET">
+      <noscript><p>Turn on JavaScript to see the sample result and run a check.</p></noscript>
+    </div>
+
+    <form class="slip" id="slip">
+      <h2>Request form</h2>
+      <p class="lede">Reads only the server's first reply. No login, nothing on the server changes.</p>
+
+      <label class="field" for="targets"><span>Targets</span>
+        <textarea id="targets" spellcheck="false" autocapitalize="off" placeholder="example.com&#10;bank.example:8443" required></textarea>
+        <small>One per line, up to 4. Default port 443.</small>
+      </label>
+
+      <fieldset>
+        <legend>Checks</legend>
+        <label class="panel"><input type="checkbox" name="check" value="kex" checked><span>PQ key exchange (TLS 1.3)</span><em>weight 100</em></label>
+        <label class="panel"><input type="checkbox" name="check" value="cert" checked><span>Certificate</span><em>weight 60</em></label>
+        <label class="panel"><input type="checkbox" name="check" value="ssh" checked><span>SSH (ports 22, 2222)</span><em>weight 50</em></label>
+        <label class="panel"><input type="checkbox" name="check" value="tls" checked><span>TLS versions</span><em>weight 40</em></label>
+      </fieldset>
+
+      <label class="field" for="pw"><span>Access code</span>
+        <input id="pw" type="password" autocomplete="current-password">
+      </label>
+
+      <button class="go" id="go" type="submit">Check</button>
+      <p class="status" id="status" role="status"></p>
+      <p class="ask">No access code yet? <a id="ask" href="https://wa.me/6289503386642">Ask on WhatsApp</a></p>
+      <p class="consent">Only check systems you own or have permission to test.</p>
+    </form>
+  </div>
+
+  <section class="leaflet" id="reading" aria-labelledby="reading-h">
+    <div class="wrap">
+      <div class="leaflet-head">
+        <h2 id="reading-h">Understanding your result</h2>
+        <p>Quantum computers don't threaten all of cryptography, and not every fix can be made today.
+          This section explains what each row on the result sheet means, and why. As of October 2026; full sources are on the
+          <a href="/en/methodology#sources">method page</a>.</p>
+      </div>
+
+      <article class="topic" id="what-is-checked">
+        <div><h3>What gets checked</h3><p class="row-ref">Every row</p></div>
+        <div class="body">
+          <p>When a browser opens an HTTPS site, three things happen in a fraction of a second:</p>
+          <ol>
+            <li>The browser and server agree on a secret key through a <b>key exchange</b>. The <a href="#row-kex">PQ key exchange</a> row checks this step.</li>
+            <li>The server shows its <b>certificate</b>, a signed digital ID card. The <a href="#row-cert">Certificate</a> row checks what kind of signature it uses.</li>
+            <li>Data travels locked with AES, which stays safe.</li>
+          </ol>
+          <p>Quantum computers threaten steps 1 and 2. The <a href="#row-tls">TLS versions</a> row checks that the server speaks TLS 1.3,
+            the only version where post-quantum key exchange exists. The <a href="#row-ssh">SSH</a> row checks the server's remote-login door, which uses the same cryptography.</p>
+        </div>
+      </article>
+
+      <article class="topic" id="threat">
+        <div><h3>What quantum computers break</h3><p class="row-ref">Rows <a href="#row-kex">Key exchange</a>, <a href="#row-cert">Certificate</a></p></div>
+        <div class="body">
+          <p><b>Shor's algorithm</b> (1994) breaks RSA and ECC alike, whatever the key size, given a large enough quantum computer.
+            <b>Grover's algorithm</b> (1996) only speeds up key guessing, so AES-256 stays as strong as 128 bits: still impossible to guess.</p>
+          <div class="scroll"><table>
+            <thead><tr><th>Algorithm</th><th>Fate</th><th>What to do</th></tr></thead>
+            <tbody>
+              <tr><td>RSA, ECC (ECDH, X25519)</td><td>Broken</td><td>Move to ML-KEM, hybrid first</td></tr>
+              <tr><td>RSA, ECDSA signatures</td><td>Broken</td><td>Move to ML-DSA or SLH-DSA</td></tr>
+              <tr><td>AES-256, ChaCha20</td><td>Safe</td><td>No change needed</td></tr>
+              <tr><td>SHA-256, SHA-3</td><td>Safe, slightly weakened</td><td>SHA-384 or higher for the long term</td></tr>
+            </tbody>
+          </table></div>
+          <p class="note">Because Shor breaks RSA and ECC alike, SecScan gives every classical certificate the same score. RSA-4096 is no more quantum-resistant than ECDSA.</p>
+        </div>
+      </article>
+
+      <article class="topic" id="harvest">
+        <div><h3>Harvest now, decrypt later</h3><p class="row-ref">Row <a href="#row-kex">Key exchange</a></p></div>
+        <div class="body">
+          <p>An attacker can record encrypted traffic today and keep it until a large enough quantum computer exists.
+            Medical records, population data and financial data that must stay secret for years are already at risk.
+            That is why key exchange carries the largest weight: the recording can happen today, and so can the fix.</p>
+          <p>Signatures are different. Old signatures can't be forged after the fact, so the threat only becomes real once a quantum computer exists.
+            Devices that stay in service for many years, such as cars, satellites and industrial machines, still need post-quantum signatures from the factory.</p>
+          <p><b>Mosca's inequality:</b> if how long data must stay secret, plus how long migration takes (usually 5–15 years), is longer than the time left before quantum computers arrive, you are already late.</p>
+        </div>
+      </article>
+
+      <article class="topic" id="qday">
+        <div><h3>How close Q-Day is</h3></div>
+        <div class="body">
+          <p>No quantum computer can break RSA or ECC yet. But the estimated resources needed keep falling:</p>
+          <div class="scroll"><table>
+            <thead><tr><th>When</th><th>Who</th><th>Target</th><th class="num">Physical qubits</th></tr></thead>
+            <tbody>
+              <tr><td>2019</td><td>Gidney &amp; Ekerå (Google)</td><td>RSA-2048</td><td class="num">~20 million</td></tr>
+              <tr><td>May 2025</td><td>Gidney (Google)</td><td>RSA-2048</td><td class="num">&lt; 1 million</td></tr>
+              <tr><td>Feb 2026</td><td>Iceberg Quantum</td><td>RSA-2048</td><td class="num">&lt; 100,000</td></tr>
+              <tr><td>Mar 2026</td><td>Google Quantum AI et al.</td><td>ECC-256</td><td class="num">&lt; 500,000</td></tr>
+            </tbody>
+          </table></div>
+          <p>The last two figures come from simulations that assume hardware more advanced than today's. The best machines of 2026 have
+            about 50–100 logical qubits, while ECC-256 needs about 1,200. The gap is still wide, but it is closing faster than expected.</p>
+          <p class="note">Treat "quantum computer breaks RSA" headlines with care: the largest number Shor's algorithm has factored so far is 21.</p>
+        </div>
+      </article>
+
+      <article class="topic" id="standards">
+        <div><h3>The replacements are standardised</h3><p class="row-ref">Rows <a href="#row-kex">Key exchange</a>, <a href="#row-cert">Certificate</a></p></div>
+        <div class="body">
+          <p>Post-quantum cryptography (PQC) is new mathematics that stays hard for quantum computers. It runs on ordinary computers and phones through software updates. NIST published it in August 2024 after an open eight-year competition.</p>
+          <div class="scroll"><table>
+            <thead><tr><th>Name</th><th>Standard</th><th>Old name</th><th>For</th></tr></thead>
+            <tbody>
+              <tr><td>ML-KEM</td><td>FIPS 203</td><td>Kyber</td><td>Key exchange</td></tr>
+              <tr><td>ML-DSA</td><td>FIPS 204</td><td>Dilithium</td><td>Signatures</td></tr>
+              <tr><td>SLH-DSA</td><td>FIPS 205</td><td>SPHINCS+</td><td>Backup signatures</td></tr>
+            </tbody>
+          </table></div>
+          <p>What runs today is <b>hybrid</b>: <code>X25519MLKEM768</code> fits the old lock and the new lock together, so an attacker has to open both.
+            Chrome, Edge, Firefox and Safari already use it automatically, as do OpenSSL 3.5+, Go 1.24+ and Cloudflare. A server that accepts it gets full marks on the key exchange row.</p>
+        </div>
+      </article>
+
+      <article class="topic" id="certificates">
+        <div><h3>Why the certificate row still shows L</h3><p class="row-ref">Row <a href="#row-cert">Certificate</a></p></div>
+        <div class="body">
+          <p>Almost every public site today gets an L on the certificate row, including the sample above. That isn't the owner's fault:
+            no public CA issues ML-DSA certificates for the web yet, and browsers don't accept them. So the highest score a public site can reach today is 92.</p>
+          <p>The main problem is size. One HTTPS handshake carries about five signatures:</p>
+          <div class="scroll"><table>
+            <thead><tr><th>Algorithm</th><th class="num">Public key (bytes)</th><th class="num">Signature (bytes)</th></tr></thead>
+            <tbody>
+              <tr><td>ECDSA P-256</td><td class="num">64</td><td class="num">~64–72</td></tr>
+              <tr><td>RSA-2048</td><td class="num">256</td><td class="num">256</td></tr>
+              <tr><td>ML-DSA-44</td><td class="num">1,312</td><td class="num">2,420</td></tr>
+              <tr><td>ML-DSA-65</td><td class="num">1,952</td><td class="num">3,309</td></tr>
+            </tbody>
+          </table></div>
+          <p>The fix in preparation is called <b>Merkle Tree Certificates</b>: many certificates are signed together with a single signature.
+            Let's Encrypt is trialling it in late 2026 and aims for production in 2027; Cloudflare starts issuing PQC certificates in 2027.</p>
+        </div>
+      </article>
+
+      <article class="topic" id="deadlines">
+        <div><h3>Deadlines</h3></div>
+        <div class="body">
+          <ul>
+            <li><b>NIST IR 8547</b> (draft): RSA-2048 and equivalents deprecated after 2030; all RSA and ECC disallowed after 2035.</li>
+            <li><b>United States:</b> Executive Order 14412 (June 2026) sets PQC key exchange by 31 December 2030 and PQC signatures by 31 December 2031 for high-value systems.</li>
+            <li><b>EU and UK:</b> critical infrastructure around 2030–2031, done by 2035.</li>
+            <li><b>Indonesia:</b> BSSN published its Post-Quantum Cryptography Migration Guide v1.0 (December 2025), recommends ML-KEM-1024 and ML-DSA-87 in hybrid mode, and is drafting a national roadmap through a task force (2026). The official list of approved cryptographic algorithms does not include PQC yet.</li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="topic" id="myths">
+        <div><h3>Common misconceptions</h3></div>
+        <div class="body">
+          <ul class="myths">
+            <li><s>Quantum computers break all encryption.</s><span>Only public-key cryptography (RSA, ECC) breaks. AES-256 and SHA-256 stay safe.</span></li>
+            <li><s>PQC needs a quantum computer.</s><span>PQC is ordinary software and already runs in your browser.</span></li>
+            <li><s>Just raise RSA to 4096 bits.</s><span>Shor still breaks it; a bigger key only adds a little work.</span></li>
+            <li><s>AES-256 has to be replaced too.</s><span>No. What changes is how keys are exchanged and how identity is proven.</span></li>
+            <li><s>PQC certificates already work on the web.</s><span>Not yet. Web PQC certificates start in 2027.</span></li>
+            <li><s>It's decades away, no rush.</s><span>Data recorded today can be opened later, and migration takes 5–15 years.</span></li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="topic" id="fixes">
+        <div><h3>Fixing the findings</h3><p class="row-ref">Every row</p></div>
+        <div class="body">
+          <p><b>No PQ key exchange.</b> Update the TLS stack. OpenSSL 3.5+ and Go 1.24+ already offer <code>X25519MLKEM768</code>; Caddy 2.10+ turns it on with no configuration. For nginx with OpenSSL 3.5+:</p>
+          <pre><code>ssl_protocols TLSv1.3;
+ssl_ecdh_curve X25519MLKEM768:X25519:prime256v1;</code></pre>
+          <p><b>TLS 1.2 or older still enabled.</b> Turn off TLS 1.0 and 1.1 now. Turn off TLS 1.2 once you are sure no old clients still need it.</p>
+          <p><b>SSH without PQ KEX, or with an RSA host key.</b> Upgrade to OpenSSH 9.9+ for <code>mlkem768x25519-sha256</code>, remove the RSA host key, or close SSH to the internet and reach it through a VPN.</p>
+          <p><b>Classical certificate.</b> Public sites can't fix this yet. Make sure automated certificate issuance (ACME) can switch algorithms, keep an inventory of your certificates, and ask your CA about its PQC plans.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <span>SecScan PQC by <a href="https://miraestudio.id">MiraeStudio.id</a> · open source, <a href="https://github.com/Nael-Nathanael/secscan-pqc">Apache-2.0</a></span>
+    <span><a href="/en/methodology">Method &amp; reference values</a> · <a href="/en/methodology#sources">Sources</a></span>
+  </div>
+</footer>
+
+<script type="application/json" id="sample">
+{"host":"miraestudio.id","port":443,"ip":"172.67.164.162","score":92,"grade":"A","pqc_status":"SEBAGIAN","duration":6.1,
+ "scanned_at":"2026-10-06T12:36:38+07:00",
+ "components":[
+  {"key":"cert","label":"Sertifikat","max":60,"pct":65,"result":"ECDSA 256-bit","ref":"ML-DSA or SLH-DSA"},
+  {"key":"kex","label":"Kex PQ","max":100,"pct":100,"result":"X25519MLKEM768","ref":"standard ML-KEM, e.g. X25519MLKEM768"},
+  {"key":"tls","label":"TLS","max":40,"pct":100,"result":"TLS 1.3","ref":"TLS 1.3 only"},
+  {"key":"ssh","label":"SSH","max":50,"pct":100,"result":"closed","ref":"closed, or mlkem768x25519 + ed25519 without RSA"}],
+ "details":[["Certificate","CN = miraestudio.id"],["Issuer","C = US, O = Google Trust Services, CN = WE1"],
+  ["Key","id-ecPublicKey 256 bit | signature ecdsa-with-SHA256 | valid until Nov 08 07:24:38 2026 GMT"],["Chain validation","trusted"],
+  ["PQ key exchange","X25519MLKEM768 (supported), SecP256r1MLKEM768, SecP384r1MLKEM1024, MLKEM768, MLKEM1024, X25519Kyber768Draft00 (supported), X25519 (supported)"],
+  ["TLS versions","1.3"],["SSH","closed on ports 22, 2222"]],
+ "findings":[
+  {"level":"high","title":"Classical certificate (id-ecPublicKey 256 bit)","text":"Shor's algorithm breaks RSA and ECC alike; a bigger RSA key does not help. Prepare to move to ML-DSA (FIPS 204) or a hybrid certificate once CAs issue them."},
+  {"level":"info","title":"SSH closed","text":"No public SSH surface on ports 22, 2222."},
+  {"level":"good","title":"Standard PQ KEX (X25519MLKEM768)","text":"The server accepts ML-KEM key exchange (FIPS 203) in TLS 1.3, so session secrecy is PQC-ready."}]}
+</script>
+<script src="/static/app.js?v=ASSET"></script>
+</body>
+</html>

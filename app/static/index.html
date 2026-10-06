@@ -8,6 +8,9 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='5' y='2' width='22' height='28' fill='white' stroke='%231d2321' stroke-width='2'/><rect x='5' y='2' width='22' height='7' fill='%2300705f'/><path d='M9 15h14M9 20h14M9 25h9' stroke='%231d2321' stroke-width='2'/></svg>">
 <link rel="preload" href="/static/fonts/atkinson-next.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/app.css?v=ASSET">
+<link rel="alternate" hreflang="id" href="https://sec-scan.miraestudio.id/">
+<link rel="alternate" hreflang="en" href="https://sec-scan.miraestudio.id/en">
+<link rel="alternate" hreflang="x-default" href="https://sec-scan.miraestudio.id/">
 </head>
 <body>
 <header class="letterhead">
@@ -19,6 +22,7 @@
       <a href="#membaca">Membaca hasil</a>
       <a href="/metodologi">Metode</a>
       <a href="https://github.com/Nael-Nathanael/secscan-pqc">GitHub</a>
+      <a href="/en" hreflang="en" lang="en" aria-label="English">EN</a>
     </nav>
   </div>
 </header>
@@ -31,7 +35,7 @@
   </section>
 
   <div class="wrap desk">
-    <div class="sheets" id="sheets" aria-live="polite">
+    <div class="sheets" id="sheets" aria-live="polite" data-sample-no="CONTOH01-1" data-sample-pdf="/static/contoh/miraestudio-id.pdf?v=ASSET">
       <noscript><p>Aktifkan JavaScript untuk melihat contoh hasil dan menjalankan pemeriksaan.</p></noscript>
     </div>
 
@@ -221,8 +225,8 @@ ssl_ecdh_curve X25519MLKEM768:X25519:prime256v1;</code></pre>
 </footer>
 
 <script type="application/json" id="sample">
-{"host":"miraestudio.id","port":443,"ip":"172.67.164.162","score":92,"grade":"A","pqc_status":"SEBAGIAN","duration":6.1,
- "scanned_at":"2026-10-06T12:09:50+07:00",
+{"host":"miraestudio.id","port":443,"ip":"104.21.74.237","score":92,"grade":"A","pqc_status":"SEBAGIAN","duration":6.1,
+ "scanned_at":"2026-10-06T12:36:32+07:00",
  "components":[
   {"key":"cert","label":"Sertifikat","max":60,"pct":65,"result":"ECDSA 256-bit","ref":"ML-DSA atau SLH-DSA"},
   {"key":"kex","label":"Kex PQ","max":100,"pct":100,"result":"X25519MLKEM768","ref":"ML-KEM standar, mis. X25519MLKEM768"},
@@ -231,130 +235,12 @@ ssl_ecdh_curve X25519MLKEM768:X25519:prime256v1;</code></pre>
  "details":[["Sertifikat","CN = miraestudio.id"],["Penerbit","C = US, O = Google Trust Services, CN = WE1"],
   ["Kunci","id-ecPublicKey 256 bit | tanda tangan ecdsa-with-SHA256 | berlaku s/d Nov 08 07:24:38 2026 GMT"],["Validasi rantai","tepercaya"],
   ["Key exchange PQ","X25519MLKEM768 (didukung), SecP256r1MLKEM768, SecP384r1MLKEM1024, MLKEM768, MLKEM1024, X25519Kyber768Draft00 (didukung), X25519 (didukung)"],
-  ["TLS version","1.3"],["SSH","tertutup pada port 22, 2222"]],
+  ["Versi TLS","1.3"],["SSH","tertutup pada port 22, 2222"]],
  "findings":[
   {"level":"high","title":"Sertifikat klasik (id-ecPublicKey 256 bit)","text":"RSA dan ECC sama-sama dipecahkan algoritma Shor; memperbesar kunci RSA tidak menolong. Siapkan migrasi ke ML-DSA (FIPS 204) atau sertifikat hybrid begitu CA menerbitkannya."},
   {"level":"info","title":"SSH tertutup","text":"Tidak ada permukaan SSH publik pada port 22, 2222."},
   {"level":"good","title":"KEX PQ standar (X25519MLKEM768)","text":"Server menerima key exchange ML-KEM (FIPS 203) di TLS 1.3 — SIAP PQC untuk kerahasiaan sesi."}]}
 </script>
-<script>
-const $ = s => document.querySelector(s);
-const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const NAMES = { kex: 'Key exchange PQ', cert: 'Sertifikat', ssh: 'SSH', tls: 'Versi TLS' };
-const ORDER = ['kex', 'cert', 'ssh', 'tls'];
-const LEVEL = { crit: 'KRITIS', high: 'PERHATIAN', info: 'CATATAN', good: 'BAIK' };
-const STATUS = { 'SIAP PQC': 'siap PQC', 'SEBAGIAN': 'sebagian siap', 'BELUM SIAP': 'belum siap', '-': '–' };
-const when = iso => new Date(iso).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' }) + ' WIB';
-
-function flag(pct) {
-  if (pct >= 100) return '<span class="ok" aria-label="dalam rujukan"></span>';
-  if (pct >= 50) return '<span class="L" title="di bawah nilai rujukan">L</span>';
-  return '<span class="crit" title="kritis">!</span>';
-}
-
-function sheet(r, { no, sample, anchors, pdf }) {
-  const host = esc((r.host || r.target) + (r.port && r.port !== 443 ? ':' + r.port : ''));
-  const head = `<div class="sheet-head">
-      <div><div class="sheet-title">Hasil pemeriksaan kesiapan PQC</div>
-        <div class="sheet-sub">Diperiksa dari luar, read&#8209;only</div></div>
-      <div class="sheet-no">No. ${esc(no)}${sample ? '<br><span class="sample-tag">CONTOH</span>' : ''}</div>
-    </div>`;
-  if (r.error) {
-    return `<article class="sheet">${head}
-      <dl class="patient"><div><dt>Host</dt><dd>${host}</dd></div></dl>
-      <p class="sheet-error">Tidak dapat diperiksa: ${esc(r.error)}.</p></article>`;
-  }
-  const comps = ORDER.map(k => r.components.find(c => c.key === k)).filter(Boolean);
-  const rows = comps.map((c, i) => `<tr id="${anchors ? 'row-' + c.key : ''}" class="${c.pct < 100 ? 'out' : ''}" style="--i:${i}">
-      <td class="name">${NAMES[c.key]}</td>
-      <td class="val">${esc(c.result)}</td>
-      <td class="ref">${esc(c.ref)}</td>
-      <td class="num" data-label="Nilai">${c.pct}</td>
-      <td class="flag">${flag(c.pct)}</td>
-      <td class="num" data-label="Bobot">${c.max}</td>
-    </tr>`).join('').replace(/ id=""/g, '');
-  const findings = r.findings.map(f => `<li><span class="lvl lvl-${f.level}">${LEVEL[f.level]}</span>
-      <div><b>${esc(f.title)}</b><p>${esc(f.text)}</p></div></li>`).join('');
-  const tech = r.details.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('');
-  return `<article class="sheet">${head}
-    <dl class="patient">
-      <div><dt>Host</dt><dd>${host}</dd></div>
-      <div><dt>Alamat IP</dt><dd>${esc(r.ip)}</dd></div>
-      <div><dt>Waktu pemeriksaan</dt><dd>${esc(when(r.scanned_at))}</dd></div>
-    </dl>
-    <table class="results">
-      <caption>Hasil</caption>
-      <thead><tr><th scope="col">Pemeriksaan</th><th scope="col">Hasil</th><th scope="col">Nilai rujukan</th><th scope="col" class="num">Nilai</th><th scope="col">Flag</th><th scope="col" class="num">Bobot</th></tr></thead>
-      <tbody>${rows}</tbody>
-      <tfoot><tr style="--i:${comps.length}"><td colspan="6"><div class="total">
-        <span>Skor komposit, status ${esc(STATUS[r.pqc_status] || r.pqc_status)}</span>
-        <span class="score">${r.score}<span class="mono" style="font-size:16px">/100</span></span>
-        <span class="grade" aria-label="Grade ${r.grade}">${r.grade}</span></div></td></tr></tfoot>
-    </table>
-    <p class="legend">Nilai 0–100 per pemeriksaan. L: di bawah nilai rujukan. !: kritis. Skor komposit = rata-rata tertimbang dengan bobot.
-      <a href="/metodologi#skor">Cara menghitung</a></p>
-    ${findings ? `<section class="conclusion" style="--i:${comps.length + 1}"><h3>Kesimpulan</h3><ol>${findings}</ol></section>` : ''}
-    <details class="tech"><summary>Rincian teknis</summary><table>${tech}</table></details>
-    <div class="sheet-foot"><span>Akhir hasil · durasi ${r.duration} detik</span><span>${sample ? '<a href="#membaca">Cara membaca hasil ini</a> · ' : ''}<a class="pdf" href="${pdf}">${sample ? 'Lihat laporan PDF-nya' : 'Unduh PDF'}</a></span></div>
-  </article>`;
-}
-
-function renderSample() {
-  $('#sheets').innerHTML = sheet(JSON.parse($('#sample').textContent), { no: 'CONTOH01-1', sample: true, anchors: true, pdf: '/static/contoh/miraestudio-id.pdf?v=ASSET' });
-}
-
-function render(data) {
-  const pdf = `/api/report/${data.id}.pdf`;
-  const code = data.id.slice(0, 8).toUpperCase();
-  let html = '';
-  if (data.results.length > 1) {
-    const rows = data.results.map(r => `<tr><td class="mono">${esc(r.host || r.target)}</td><td class="mono">${r.error ? '–' : r.score}</td><td class="mono">${r.error ? 'gagal' : r.grade}</td></tr>`).join('');
-    html += `<div class="batch"><table><thead><tr><th>Host</th><th>Skor</th><th>Grade</th></tr></thead><tbody>${rows}</tbody></table>
-      <p class="legend">Rata-rata ${data.summary.avg}. <a href="${pdf}">Unduh semua sebagai PDF</a></p></div>`;
-  }
-  html += data.results.map((r, i) => sheet(r, { no: `${code}-${i + 1}`, anchors: false, pdf })).join('');
-  const box = $('#sheets');
-  box.classList.remove('printing');
-  box.innerHTML = html;
-  void box.offsetWidth;
-  box.classList.add('printing');
-}
-
-renderSample();
-try { $('#pw').value = localStorage.getItem('scanpw') || ''; } catch (_) {}
-$('#ask').href = 'https://wa.me/6289503386642?text=' + encodeURIComponent('Halo MiraeStudio, saya ingin kode akses SecScan PQC untuk memeriksa: ');
-
-$('#slip').addEventListener('submit', async e => {
-  e.preventDefault();
-  const targets = $('#targets').value.split(/[\n,]+/).map(t => t.trim()).filter(Boolean);
-  const checks = [...document.querySelectorAll('input[name=check]:checked')].map(i => i.value);
-  const status = $('#status');
-  const fail = msg => { status.className = 'status err'; status.textContent = msg; };
-  status.className = 'status';
-  if (!targets.length) return fail('Isi minimal satu target.');
-  if (targets.length > 4) return fail('Maksimal 4 target per pemeriksaan.');
-  if (!checks.length) return fail('Pilih minimal satu panel pemeriksaan.');
-  $('#go').disabled = true;
-  const t0 = Date.now();
-  const tick = () => status.textContent = `Memeriksa ${targets.length} target… ${Math.round((Date.now() - t0) / 1000)} detik`;
-  tick();
-  const timer = setInterval(tick, 500);
-  try {
-    const res = await fetch('/api/scan', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Scan-Password': $('#pw').value }, body: JSON.stringify({ targets, checks }) });
-    const data = await res.json().catch(() => ({}));
-    if (res.status === 401) throw new Error('Kode akses salah. Minta kode lewat WhatsApp di bawah.');
-    if (!res.ok) throw new Error(data.detail || `Server membalas ${res.status}. Coba lagi.`);
-    try { localStorage.setItem('scanpw', $('#pw').value); } catch (_) {}
-    render(data);
-    status.textContent = `Selesai dalam ${Math.round((Date.now() - t0) / 1000)} detik.`;
-    $('#sheets').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
-  } catch (err) {
-    fail(err.message === 'Failed to fetch' ? 'Tidak terhubung ke server. Periksa koneksi lalu coba lagi.' : err.message);
-  } finally {
-    clearInterval(timer);
-    $('#go').disabled = false;
-  }
-});
-</script>
+<script src="/static/app.js?v=ASSET"></script>
 </body>
 </html>

@@ -7,8 +7,9 @@ SecScan PQC checks how ready a server is for post-quantum cryptography (PQC) by 
 TLS key exchange (ML-KEM), the certificate, the TLS versions on offer, and SSH, scores each one, and produces a PDF report.
 The scans are read-only: SecScan sends protocol hellos, reads the server's first reply, and disconnects.
 
-The web UI and reports are in Bahasa Indonesia. A hosted instance runs at [sec-scan.miraestudio.id](https://sec-scan.miraestudio.id).
-The full methodology and the theory behind it are at [`/metodologi`](https://sec-scan.miraestudio.id/metodologi).
+The web UI, findings and PDF reports come in Bahasa Indonesia (at `/`) and English (at [`/en`](https://sec-scan.miraestudio.id/en)).
+A hosted instance runs at [sec-scan.miraestudio.id](https://sec-scan.miraestudio.id). The method and reference values are at
+[`/en/methodology`](https://sec-scan.miraestudio.id/en/methodology) ([`/metodologi`](https://sec-scan.miraestudio.id/metodologi) in Indonesian).
 
 ![Scan result for miraestudio.id: 92, grade A](docs/scan-result.png)
 
@@ -80,7 +81,7 @@ The client IP used for rate limiting comes from the `CF-Connecting-IP` header wh
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/scan` | Body `{"targets": ["example.com", "host:8443"], "checks": ["kex", "cert", "tls", "ssh"]}`. Up to 4 targets. Returns the results and a scan `id`. |
+| `POST` | `/api/scan` | Body `{"targets": ["example.com", "host:8443"], "checks": ["kex", "cert", "tls", "ssh"], "lang": "en"}`. Up to 4 targets; `lang` is `id` (default) or `en` and sets the language of findings, errors and the PDF. Returns the results and a scan `id`. |
 | `GET` | `/api/report/{id}.pdf` | PDF report for a recent scan (the last 200 are kept in memory) |
 | `GET` | `/healthz` | Health check |
 

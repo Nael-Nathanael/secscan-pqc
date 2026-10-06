@@ -32,6 +32,8 @@ jobs:
           docker run -d --name app -p 8000:8000 sec-scan:ci
           for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8000/healthz && break; sleep 1; done
           curl -fsS http://127.0.0.1:8000/metodologi | grep -q "nilai rujukan"
+          curl -fsS http://127.0.0.1:8000/en | grep -q 'lang="en"'
+          curl -fsS http://127.0.0.1:8000/en/methodology | grep -q "reference values"
           curl -fsS http://127.0.0.1:8000/static/app.css > /dev/null
           curl -fsS http://127.0.0.1:8000/static/fonts/atkinson-next.woff2 > /dev/null
           curl -fsS http://127.0.0.1:8000/static/contoh/miraestudio-id.pdf | head -c 5 | grep -q "%PDF"

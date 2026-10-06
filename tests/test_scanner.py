@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
 from cryptography.x509.oid import NameOID
 
+import i18n
 import scanner
 import tlsprobe
 
@@ -157,7 +158,32 @@ def test_sheet_fields(scan):
     assert got["kex"][0] == "X25519MLKEM768"
     assert got["tls"][0] == "TLS 1.2, 1.3"
     assert got["ssh"][0] == "port 22, sntrup761x25519, host key RSA + ECDSA + ed25519"
-    assert all(ref == scanner.REFERENCE[k] for k, (_res, ref) in got.items())
+    assert all(ref == i18n.t("id", f"ref_{k}") for k, (_res, ref) in got.items())
+
+
+def test_english_output(scan, monkeypatch):
+    monkeypatch.setattr(scanner, "resolve_public", lambda host: "203.0.113.10")
+    monkeypatch.setattr(scanner, "_run_probes", lambda *a: probes(cert=make_cert(ec.generate_private_key(ec.SECP256R1()))))
+    r = scanner.scan_target("example.test", list(scanner.CHECKS), lang="en")
+    assert r["score"] == 92
+    titles = [f["title"] for f in r["findings"]]
+    assert "Classical certificate (id-ecPublicKey 256 bit)" in titles
+    assert "SSH closed" in titles
+    assert {c["key"]: c["ref"] for c in r["components"]}["tls"] == "TLS 1.3 only"
+    assert ("Chain validation", "trusted") in r["details"]
+
+
+def test_target_errors_are_translated(monkeypatch):
+    def nx(host):
+        raise scanner.TargetError("err_dns")
+    monkeypatch.setattr(scanner, "resolve_public", nx)
+    assert scanner.scan_target("nope.invalid", ["kex"], lang="en")["error"] == "the domain does not resolve"
+    assert scanner.scan_target("nope.invalid", ["kex"])["error"] == "domain tidak dapat di-resolve"
+
+
+def test_catalog_complete():
+    for key, value in i18n.MSG.items():
+        assert len(value) == len(i18n.LANGS), key
 
 
 @pytest.mark.parametrize("score,grade", [(100, "A"), (90, "A"), (89, "B"), (65, "C"), (50, "D"), (49, "E")])

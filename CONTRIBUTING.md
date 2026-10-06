@@ -20,7 +20,9 @@ Run the app with `cd app && ../.venv/bin/uvicorn main:app --reload`, then open h
 - Changing a score or weight in `app/scanner.py` means updating `app/static/metodologi.html` in the same pull request.
   `tests/test_api.py` fails when the two disagree.
 - Every new scoring branch needs a test in `tests/test_scanner.py`. The tests stub the network, so they run offline.
-- User-facing text (UI, findings, PDF) is in Bahasa Indonesia. Code, comments and commit messages are in English.
+- User-facing text ships in Bahasa Indonesia and English. Scanner, API and finding strings live in `app/i18n.py`, PDF
+  labels in `TX` in `app/report.py`, page-script strings in `T` in `app/static/app.js`, and each page has an Indonesian
+  and an English file. Change both languages in the same pull request. Code, comments and commit messages are in English.
 - Claims on the methodology page need a source, preferably a primary one (NIST, IETF, BSSN, vendor release notes).
 - Never send anything beyond protocol hellos to a target. SecScan must stay read-only.
 

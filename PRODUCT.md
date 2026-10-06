@@ -10,7 +10,7 @@ web
 
 The Indonesian public who want to understand post-quantum cryptography: developers, IT staff, students, and curious
 readers. They arrive from a link, a talk, or a search, read in Bahasa Indonesia, and often on a phone. Most of them cannot
-scan anything themselves; the scanner is password-gated.
+scan anything themselves; the scanner is password-gated. An English edition at `/en` serves readers outside Indonesia.
 
 ## Product Purpose
 
@@ -39,7 +39,8 @@ probes are hand-built protocol hellos, read-only. The explanations are sourced a
 - The best score a public site can reach today is 92: no public CA issues ML-DSA certificates yet.
 - Scope is the scanner plus educational content from the PQC research. No asset dashboard, registry, user accounts,
   algorithm directory, or crypto tools.
-- UI and reports in Bahasa Indonesia.
+- Two languages: Bahasa Indonesia at `/` (the default) and English at `/en`. UI, findings, errors and PDF reports exist in
+  both, each page names its twin with hreflang, and the bar carries the switch.
 
 ## Brand Commitments
 

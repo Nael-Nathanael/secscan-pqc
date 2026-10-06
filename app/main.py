@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 import report
 import scanner
+from i18n import lang_of, t
 
 MAX_TARGETS = 4
 MAX_CONCURRENT_HOSTS = int(os.environ.get("MAX_CONCURRENT_HOSTS", "4"))
@@ -31,7 +32,7 @@ app.mount("/static", StaticFiles(directory=STATIC), name="static")
 def _asset_version():
     # Content hash of the cached assets, so a deploy changes their URLs and no edge cache serves stale copies.
     h = hashlib.sha256()
-    for path in ("app.css", "contoh/miraestudio-id.pdf"):
+    for path in ("app.css", "app.js", "contoh/miraestudio-id.pdf", "contoh/miraestudio-id-en.pdf"):
         with open(os.path.join(STATIC, path), "rb") as f:
             h.update(f.read())
     return h.hexdigest()[:10]
@@ -39,7 +40,7 @@ def _asset_version():
 
 ASSET_V = _asset_version()
 PAGES = {}
-for _name in ("index.html", "metodologi.html"):
+for _name in ("index.html", "metodologi.html", "en/index.html", "en/methodology.html"):
     with open(os.path.join(STATIC, _name), encoding="utf-8") as _f:
         PAGES[_name] = _f.read().replace("?v=ASSET", f"?v={ASSET_V}")
 
@@ -52,23 +53,24 @@ _bad: "defaultdict[str, deque]" = defaultdict(deque)
 class ScanRequest(BaseModel):
     targets: list[str]
     checks: list[str] = list(scanner.CHECKS)
+    lang: str = "id"
 
 
 def _client_ip(req: Request):
     return req.headers.get("cf-connecting-ip") or (req.client.host if req.client else "?")
 
 
-def _rate_limit(ip, n):
+def _rate_limit(ip, n, lang):
     now = time.time()
     q = _hits[ip]
     while q and q[0] < now - RATE_WINDOW:
         q.popleft()
     if len(q) + n > RATE_LIMIT:
-        raise HTTPException(429, "Terlalu banyak scan. Coba lagi beberapa menit lagi.")
+        raise HTTPException(429, t(lang, "api_rate"))
     q.extend([now] * n)
 
 
-def _check_password(ip, given):
+def _check_password(ip, given, lang):
     if not PASSWORD:
         return
     now = time.time()
@@ -76,15 +78,15 @@ def _check_password(ip, given):
     while q and q[0] < now - RATE_WINDOW:
         q.popleft()
     if len(q) >= MAX_BAD_PASSWORD:
-        raise HTTPException(429, "Terlalu banyak percobaan password salah. Coba lagi nanti.")
+        raise HTTPException(429, t(lang, "api_bad_pw_rate"))
     if not hmac.compare_digest((given or "").encode(), PASSWORD.encode()):
         q.append(now)
-        raise HTTPException(401, "Password salah.")
+        raise HTTPException(401, t(lang, "api_bad_pw"))
 
 
-async def _scan_one(target, checks):
+async def _scan_one(target, checks, lang):
     async with _sem:
-        return await asyncio.to_thread(scanner.scan_target, target, checks)
+        return await asyncio.to_thread(scanner.scan_target, target, checks, lang)
 
 
 @app.get("/")
@@ -97,6 +99,16 @@ def methodology():
     return HTMLResponse(PAGES["metodologi.html"])
 
 
+@app.get("/en")
+def index_en():
+    return HTMLResponse(PAGES["en/index.html"])
+
+
+@app.get("/en/methodology")
+def methodology_en():
+    return HTMLResponse(PAGES["en/methodology.html"])
+
+
 @app.get("/healthz")
 def healthz():
     return {"ok": True}
@@ -104,26 +116,28 @@ def healthz():
 
 @app.post("/api/scan")
 async def scan(body: ScanRequest, req: Request):
+    lang = lang_of(body.lang)
     targets = []
-    for t in body.targets:
-        t = t.strip()
-        if t and t not in targets:
-            targets.append(t[:300])
+    for target in body.targets:
+        target = target.strip()
+        if target and target not in targets:
+            targets.append(target[:300])
     if not targets:
-        raise HTTPException(400, "Masukkan minimal satu domain atau IP.")
+        raise HTTPException(400, t(lang, "api_no_target"))
     if len(targets) > MAX_TARGETS:
-        raise HTTPException(400, f"Maksimal {MAX_TARGETS} target per scan.")
+        raise HTTPException(400, t(lang, "api_too_many", n=MAX_TARGETS))
     checks = [c for c in scanner.CHECKS if c in body.checks]
     if not checks:
-        raise HTTPException(400, "Pilih minimal satu metode testing.")
+        raise HTTPException(400, t(lang, "api_no_check"))
     ip = _client_ip(req)
-    _check_password(ip, req.headers.get("x-scan-password"))
-    _rate_limit(ip, len(targets))
+    _check_password(ip, req.headers.get("x-scan-password"), lang)
+    _rate_limit(ip, len(targets), lang)
 
-    results = await asyncio.gather(*(_scan_one(t, checks) for t in targets))
+    results = await asyncio.gather(*(_scan_one(target, checks, lang) for target in targets))
     scan_id = uuid.uuid4().hex
     data = {
         "id": scan_id,
+        "lang": lang,
         "created": datetime.now(scanner.WIB).isoformat(),
         "results": results,
         "summary": scanner.summarize(results),
@@ -135,13 +149,14 @@ async def scan(body: ScanRequest, req: Request):
 
 
 @app.get("/api/report/{scan_id}.pdf")
-async def pdf(scan_id: str):
+async def pdf(scan_id: str, lang: str = "id"):
     data = _scans.get(scan_id)
     if not data:
-        raise HTTPException(404, "Hasil scan sudah kedaluwarsa, silakan scan ulang.")
+        raise HTTPException(404, t(lang, "api_expired"))
     pdf_bytes = await asyncio.to_thread(report.build_pdf, data)
     hosts = ", ".join(r.get("host") or r["target"] for r in data["results"])[:80]
     stamp = datetime.fromisoformat(data["created"]).strftime("%Y.%m.%d %H.%M.%S")
-    name = f"Hasil Scan Kesiapan PQC {hosts} {stamp}.pdf".replace('"', "")
+    title = "PQC Readiness Scan" if data.get("lang") == "en" else "Hasil Scan Kesiapan PQC"
+    name = f"{title} {hosts} {stamp}.pdf".replace('"', "")
     return Response(pdf_bytes, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{name}"'})

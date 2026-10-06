@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Method &amp; reference values · SecScan PQC</title>
+<meta name="description" content="How SecScan PQC checks a server and scores its post-quantum readiness: probes, reference values, weights, limits and sources.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='5' y='2' width='22' height='28' fill='white' stroke='%231d2321' stroke-width='2'/><rect x='5' y='2' width='22' height='7' fill='%2300705f'/><path d='M9 15h14M9 20h14M9 25h9' stroke='%231d2321' stroke-width='2'/></svg>">
+<link rel="preload" href="/static/fonts/atkinson-next.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/static/app.css?v=ASSET">
+<link rel="alternate" hreflang="id" href="https://sec-scan.miraestudio.id/metodologi">
+<link rel="alternate" hreflang="en" href="https://sec-scan.miraestudio.id/en/methodology">
+<link rel="alternate" hreflang="x-default" href="https://sec-scan.miraestudio.id/metodologi">
+</head>
+<body>
+<header class="letterhead">
+  <div class="wrap">
+    <a class="brand" href="/en"><span class="brand-code">PQ</span><span class="brand-name">SecScan PQC</span></a>
+    <span class="brand-by">by <a href="https://miraestudio.id">MiraeStudio.id</a></span>
+    <nav aria-label="Main">
+      <a href="/en">Check</a>
+      <a href="/en#reading">Reading results</a>
+      <a href="/en/methodology" aria-current="page">Method</a>
+      <a href="https://github.com/Nael-Nathanael/secscan-pqc">GitHub</a>
+      <a href="/metodologi" hreflang="id" lang="id" aria-label="Bahasa Indonesia">ID</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap doc">
+  <section class="intro">
+    <h1>Method and reference values</h1>
+    <p>What the scanner sends, how each row on the result sheet is scored, and why the weights are what they are.
+      Every rule on this page matches <a href="https://github.com/Nael-Nathanael/secscan-pqc/blob/main/app/scanner.py">the scanner's code</a> exactly.
+      As of October 2026.</p>
+  </section>
+
+  <p class="key"><b>The highest score a public site can reach today is 92, not 100.</b>
+    Full marks on the certificate need an ML-DSA or SLH-DSA certificate, and no public CA issues those for the web yet.
+    A site that already uses ML-KEM, offers only TLS 1.3, and keeps SSH off the internet scores 92 (grade A).
+    The last 8 points can only be earned once PQC certificates exist, expected from 2027.</p>
+
+  <nav class="sheet toc" aria-label="Contents">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#reference">Reference values</a></li>
+      <li><a href="#scope">Scope</a></li>
+      <li><a href="#probes">How each probe works</a></li>
+      <li><a href="#score">How the score is calculated</a></li>
+      <li><a href="#weights">Why these weights</a></li>
+      <li><a href="#limits">Limits</a></li>
+      <li><a href="#sources">Sources</a></li>
+    </ol>
+  </nav>
+
+  <section class="sheet" id="reference">
+    <h2>Reference values</h2>
+    <p>The "Reference value" column on the result sheet shows what full marks require. A result below the reference gets the
+      flag <b>L</b>; a result below 50 gets the flag <b>!</b> (critical).</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Check</th><th>Reference value</th><th class="num">Weight</th></tr></thead>
+      <tbody>
+        <tr><td>PQ key exchange (TLS 1.3)</td><td>A standard ML-KEM group, e.g. <code>X25519MLKEM768</code></td><td class="num" data-weight="kex">100</td></tr>
+        <tr><td>Certificate</td><td>An ML-DSA or SLH-DSA key</td><td class="num" data-weight="cert">60</td></tr>
+        <tr><td>SSH</td><td>Closed to the internet, or <code>mlkem768x25519</code> + an ed25519 host key with no RSA</td><td class="num" data-weight="ssh">50</td></tr>
+        <tr><td>TLS versions</td><td>TLS 1.3 only</td><td class="num" data-weight="tls">40</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="sheet" id="scope">
+    <h2>Scope</h2>
+    <p>SecScan checks a host from outside, the way any browser or SSH client on the internet sees it.
+      Checks are read-only: the scanner only sends protocol opening messages (TLS ClientHello, SSH banner) and reads the
+      server's first reply. No login, no application data, and no attack attempts.</p>
+    <ul>
+      <li>A target is a domain or IP with an optional port (<code>host:port</code>, default 443). Up to 4 targets per check.</li>
+      <li>Domains are resolved and the first address (IPv4 if there is one) is checked. Private, loopback and link-local addresses are refused,
+        so the scanner cannot be used to reach internal networks.</li>
+      <li>Only check systems you own or have permission to test.</li>
+    </ul>
+  </section>
+
+  <section class="sheet" id="probes">
+    <h2>How each probe works</h2>
+    <h3>TLS versions</h3>
+    <p>For each version (1.0, 1.1, 1.2, 1.3) the scanner sends one ClientHello offering only that version. The version counts as enabled
+      if the server answers with a ServerHello for the same version. The messages are built by hand, byte by byte, so the result does not
+      depend on which TLS versions the scanning machine's library supports.</p>
+    <h3>Post-quantum key exchange (TLS 1.3)</h3>
+    <p>Each group is tested on its own. A TLS 1.3 ClientHello offers exactly one group in <code>supported_groups</code>
+      with an empty <code>key_share</code>. A server that supports the group must answer with a HelloRetryRequest naming it
+      (RFC 8446 §4.1.4); a server that doesn't answers with an alert. This way the scanner never needs its own ML-KEM implementation.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Group</th><th>Codepoint</th><th>Kind</th></tr></thead>
+      <tbody>
+        <tr><td><code>X25519MLKEM768</code></td><td class="mono">0x11EC</td><td>Hybrid, standard (RFC 10024)</td></tr>
+        <tr><td><code>SecP256r1MLKEM768</code></td><td class="mono">0x11EB</td><td>Hybrid, standard (RFC 10024)</td></tr>
+        <tr><td><code>SecP384r1MLKEM1024</code></td><td class="mono">0x11ED</td><td>Hybrid, standard (RFC 10024)</td></tr>
+        <tr><td><code>MLKEM768</code>, <code>MLKEM1024</code></td><td class="mono">0x0201, 0x0202</td><td>Pure ML-KEM</td></tr>
+        <tr><td><code>X25519Kyber768Draft00</code></td><td class="mono">0x6399</td><td>Kyber draft, obsolete</td></tr>
+        <tr><td><code>X25519</code></td><td class="mono">0x001D</td><td>Classical, for comparison</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Certificate</h3>
+    <p>The scanner makes an ordinary TLS handshake and reads the leaf certificate: public key type and size, signature algorithm,
+      and expiry date. A second handshake validates the chain and host name against the system trust store.
+      ML-DSA-44/65/87 and SLH-DSA OIDs are recognised as post-quantum certificates.</p>
+    <h3>SSH</h3>
+    <p>Ports 22 and 2222 are opened, the banner is read, and the scanner reads the server's KEXINIT message. That message is sent unencrypted
+      before authentication and lists the key exchange and host key algorithms the server supports. The connection closes before any login.</p>
+  </section>
+
+  <section class="sheet" id="score">
+    <h2>How the score is calculated</h2>
+    <p>Each check produces a score from 0 to 100. The composite score is the weighted average of the selected checks,
+      rounded: <code>score = Σ(weight × check score) / Σ weight</code>. Checks that weren't selected don't count.</p>
+
+    <h3>PQ key exchange</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Condition</th><th class="num">Score</th></tr></thead>
+      <tbody>
+        <tr><td>Accepts at least one standard ML-KEM group (hybrid or pure)</td><td class="num">100</td></tr>
+        <tr><td>Accepts only <code>X25519Kyber768Draft00</code></td><td class="num">50</td></tr>
+        <tr><td>No PQ group, or TLS does not respond</td><td class="num">0</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Certificate</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Leaf certificate key</th><th class="num">Score</th></tr></thead>
+      <tbody>
+        <tr><td>ML-DSA or SLH-DSA</td><td class="num">100</td></tr>
+        <tr><td>Classical and still classically strong: RSA ≥ 2048 bits, ECDSA ≥ 256 bits, Ed25519/Ed448</td><td class="num" data-cert-classical>65</td></tr>
+        <tr><td>RSA &lt; 2048 bits, ECDSA &lt; 256 bits, DSA, or an unknown algorithm</td><td class="num">20</td></tr>
+        <tr><td>Untrusted chain</td><td class="num">−30</td></tr>
+        <tr><td>Expired or invalid</td><td class="num">0</td></tr>
+      </tbody>
+    </table></div>
+    <p>Every classical key gets the same score. Shor's algorithm breaks RSA and ECC alike, and growing an RSA key
+      to 3072 or 4096 bits adds no meaningful quantum resistance. Scoring big RSA keys higher would push migration in the wrong direction.</p>
+
+    <h3>TLS versions</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Condition</th><th class="num">Points (of 40)</th></tr></thead>
+      <tbody>
+        <tr><td>TLS 1.3 enabled</td><td class="num">+25</td></tr>
+        <tr><td>TLS 1.3 enabled and TLS 1.2 disabled</td><td class="num">+15</td></tr>
+        <tr><td>TLS 1.0 or 1.1 still enabled (RFC 8996)</td><td class="num">−10</td></tr>
+      </tbody>
+    </table></div>
+    <p>Score = points ÷ 40 × 100. For example: TLS 1.3 only = 100; TLS 1.2 + 1.3 = 62; no TLS 1.3 = 0.</p>
+
+    <h3>SSH</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Condition</th><th class="num">Score</th></tr></thead>
+      <tbody>
+        <tr><td>Ports 22 and 2222 closed</td><td class="num">100</td></tr>
+        <tr><td>Port open but KEXINIT unreadable</td><td class="num">50</td></tr>
+        <tr><td>Supports PQ KEX (<code>mlkem768x25519-sha256</code> or <code>sntrup761x25519-sha512</code>)</td><td class="num">+25 points</td></tr>
+        <tr><td>Offers an <code>ssh-ed25519</code> host key</td><td class="num">+15 points</td></tr>
+        <tr><td>No RSA host key</td><td class="num">+10 points</td></tr>
+      </tbody>
+    </table></div>
+    <p>For an open port, score = points ÷ 50 × 100.</p>
+
+    <h3>Grades and PQC status</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Grade</th><th class="num">Score</th></tr></thead>
+      <tbody>
+        <tr><td><span class="grade">A</span></td><td class="num">90–100</td></tr>
+        <tr><td><span class="grade">B</span></td><td class="num">80–89</td></tr>
+        <tr><td><span class="grade">C</span></td><td class="num">65–79</td></tr>
+        <tr><td><span class="grade">D</span></td><td class="num">50–64</td></tr>
+        <tr><td><span class="grade">E</span></td><td class="num">0–49</td></tr>
+      </tbody>
+    </table></div>
+    <ul>
+      <li><b>PQC-ready</b>: key exchange and certificate both score 100.</li>
+      <li><b>Partly ready</b>: key exchange is PQ, the certificate is still classical. This is the best a public site can reach today.</li>
+      <li><b>Not ready</b>: key exchange is not PQ yet.</li>
+    </ul>
+  </section>
+
+  <section class="sheet" id="weights">
+    <h2>Why these weights</h2>
+    <ul>
+      <li><b>Key exchange (100)</b> carries the largest weight because traffic recorded today
+        can be opened once a quantum computer exists. Site owners can also fix it today with a software update.</li>
+      <li><b>Certificate (60)</b> protects the server's identity. Old signatures can't be forged after the fact, so the threat only becomes
+        real once a quantum computer exists. Site owners can't do much about it until CAs issue PQC certificates.</li>
+      <li><b>SSH (50)</b> is the administration door. An SSH port open to the internet widens the attack surface, so keeping it closed
+        scores highest.</li>
+      <li><b>TLS versions (40)</b> are a prerequisite: PQ key exchange only exists in TLS 1.3, and a TLS 1.2 that's still enabled lets
+        clients fall back to classical key exchange.</li>
+    </ul>
+    <p>The threat itself is explained in <a href="/en#reading">Understanding your result</a>.</p>
+  </section>
+
+  <section class="sheet" id="limits">
+    <h2>Limits</h2>
+    <ul>
+      <li>Only one IP address per target is checked. Hosts with several IPs or a load balancer may give different results per node.</li>
+      <li>Sites behind a CDN or reverse proxy are scored on the edge, not the origin server.</li>
+      <li>Only the public surface is checked: HTTPS and SSH. VPNs, internal networks, application tokens (JWT), stored data,
+        HSMs and firmware signing are invisible from outside and need their own cryptographic inventory (CBOM).</li>
+      <li>Only the leaf certificate is scored; intermediate and root CAs are not.</li>
+      <li>Firewalls or rate limits can block probes and make a feature look disabled.</li>
+      <li>A result is a snapshot of the moment it was taken.</li>
+    </ul>
+  </section>
+
+  <section class="sheet refs" id="sources">
+    <h2>Sources</h2>
+    <ol>
+      <li><a href="https://csrc.nist.gov/pubs/fips/203/final">NIST FIPS 203: ML-KEM</a> (2024)</li>
+      <li><a href="https://csrc.nist.gov/pubs/fips/204/final">NIST FIPS 204: ML-DSA</a> (2024)</li>
+      <li><a href="https://csrc.nist.gov/pubs/fips/205/final">NIST FIPS 205: SLH-DSA</a> (2024)</li>
+      <li><a href="https://csrc.nist.gov/pubs/ir/8547/ipd">NIST IR 8547 (draft): Transition to Post-Quantum Cryptography Standards</a> (2024)</li>
+      <li><a href="https://www.nist.gov/news-events/news/2025/09/recommendations-key-encapsulation-mechanisms-nist-publishes-sp-800-227">NIST SP 800-227: Recommendations for KEMs</a> (2025)</li>
+      <li><a href="https://www.nist.gov/news-events/news/2025/03/nist-selects-hqc-fifth-algorithm-post-quantum-encryption">NIST selects HQC</a> (March 2025)</li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc10024">RFC 10024: hybrid ML-KEM for TLS 1.3</a> (August 2026)</li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc8446#section-4.1.4">RFC 8446 §4.1.4: HelloRetryRequest</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc8996">RFC 8996: deprecating TLS 1.0 and 1.1</a></li>
+      <li><a href="https://www.bssn.go.id/media/uploads/2026/01/SK.07.03-2025-007-Panduan-Migrasi-ke-Post-Quantum-Cryptography-versi-1.0.pdf">BSSN: Post-Quantum Cryptography Migration Guide v1.0</a> (December 2025, in Indonesian)</li>
+      <li><a href="https://www.bssn.go.id/daftar-algoritma-kriptografi-indonesia/">BSSN: Indonesian list of cryptographic algorithms</a> (in Indonesian)</li>
+      <li><a href="https://www.whitehouse.gov/wp-content/uploads/2026/06/M-26-15-Execution-of-the-Migration-to-Post-Quantum-Cryptography.pdf">OMB M-26-15: Execution of the Migration to Post-Quantum Cryptography</a> (June 2026)</li>
+      <li><a href="https://arxiv.org/abs/2505.15917">Gidney: RSA-2048 with fewer than a million qubits</a> (2025)</li>
+      <li><a href="https://arxiv.org/abs/2602.11457">Webster et al. (Iceberg Quantum): RSA-2048 with fewer than 100,000 qubits</a> (2026)</li>
+      <li><a href="https://arxiv.org/abs/2603.28846">Babbush et al. (Google Quantum AI): ECC-256 with fewer than 500,000 qubits</a> (2026)</li>
+      <li><a href="https://www.evolutionq.com/publications/quantum-threat-timeline-research-report-2025">Global Risk Institute: Quantum Threat Timeline Report 2025</a></li>
+      <li><a href="https://letsencrypt.org/2026/06/03/pq-certs">Let's Encrypt: post-quantum certificate plans</a> (2026)</li>
+      <li><a href="https://radar.cloudflare.com/post-quantum">Cloudflare Radar: post-quantum adoption</a></li>
+      <li><a href="https://openssl-library.org/news/openssl-3.5-notes/">OpenSSL 3.5 release notes</a> (2025)</li>
+      <li><a href="https://www.openssh.com/releasenotes.html">OpenSSH release notes</a></li>
+    </ol>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <span>SecScan PQC by <a href="https://miraestudio.id">MiraeStudio.id</a> · open source, <a href="https://github.com/Nael-Nathanael/secscan-pqc">Apache-2.0</a></span>
+    <span><a href="/en">Check</a> · <a href="/en#reading">Reading results</a></span>
+  </div>
+</footer>
+</body>
+</html>

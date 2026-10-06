@@ -12,6 +12,7 @@ from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, ed25519, r
 
 import sshprobe
 import tlsprobe
+from i18n import finding, t
 
 WIB = timezone(timedelta(hours=7), "WIB")
 
@@ -24,13 +25,6 @@ CHECKS = {
 SSH_PORTS = (22, 2222)
 # Any trusted classical key (RSA >= 2048, ECC >= 256, EdDSA): Shor breaks them all alike.
 CLASSICAL_CERT_PCT = 65
-# What full marks looks like, per check (the "nilai rujukan" on the result sheet).
-REFERENCE = {
-    "kex": "ML-KEM standar, mis. X25519MLKEM768",
-    "cert": "ML-DSA atau SLH-DSA",
-    "tls": "TLS 1.3 saja",
-    "ssh": "tertutup, atau mlkem768x25519 + ed25519 tanpa RSA",
-}
 
 
 def _key_short(info):
@@ -53,23 +47,23 @@ OID_SHORT = {
 
 
 class TargetError(ValueError):
-    pass
+    """Carries an i18n message key."""
 
 
 def parse_target(raw):
     raw = raw.strip()
     if not raw:
-        raise TargetError("kosong")
+        raise TargetError("err_empty")
     if "://" not in raw:
         raw = "//" + raw
     u = urlsplit(raw)
     host = (u.hostname or "").strip(".").lower()
     if not host or len(host) > 253:
-        raise TargetError("host tidak valid")
+        raise TargetError("err_host")
     try:
         port = u.port or 443
     except ValueError:
-        raise TargetError("port tidak valid") from None
+        raise TargetError("err_port") from None
     return host, port
 
 
@@ -78,12 +72,12 @@ def resolve_public(host):
     try:
         infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
     except socket.gaierror:
-        raise TargetError("domain tidak dapat di-resolve") from None
+        raise TargetError("err_dns") from None
     addrs = []
     for fam, *_rest, sa in infos:
         ip = ipaddress.ip_address(sa[0])
         if not ip.is_global:
-            raise TargetError("alamat privat/internal tidak diizinkan")
+            raise TargetError("err_private")
         addrs.append((fam, str(ip)))
     v4 = [a for f, a in addrs if f == socket.AF_INET]
     return v4[0] if v4 else addrs[0][1]
@@ -158,10 +152,6 @@ def _run_probes(ip, port, sni, checks):
     return out
 
 
-def _finding(findings, level, title, text):
-    findings.append({"level": level, "title": title, "text": text})
-
-
 def grade_for(score):
     if score >= 90:
         return "A"
@@ -174,25 +164,31 @@ def grade_for(score):
     return "E"
 
 
-def scan_target(raw, checks):
+def scan_target(raw, checks, lang="id"):
     started = time.monotonic()
     scanned_at = datetime.now(WIB)
     result = {"target": raw.strip(), "scanned_at": scanned_at.isoformat(), "checks": list(checks)}
+    findings = []
+
+    def find(level, key, **kw):
+        title, text = finding(lang, key, **kw)
+        findings.append({"level": level, "title": title, "text": text})
+
     try:
         host, port = parse_target(raw)
         result["host"], result["port"] = host, port
         ip = resolve_public(host)
         result["ip"] = ip
     except TargetError as e:
-        result["error"] = str(e)
+        result["error"] = t(lang, str(e))
         result["duration"] = round(time.monotonic() - started, 1)
         return result
 
     pr = _run_probes(ip, port, host, checks)
-    components, details, findings = [], [], []
+    components, details = [], []
     tls_reachable = any(pr.get(f"v{c}") is not None for c in tlsprobe.VERSION_NAMES) or isinstance(pr.get("cert"), tuple)
     if {"cert", "kex", "tls"} & set(checks) and not tls_reachable:
-        result["error"] = f"port {port} tidak merespons (host mati, atau memblokir pemindai)"
+        result["error"] = t(lang, "err_no_tls", port=port)
         result["duration"] = round(time.monotonic() - started, 1)
         return result
 
@@ -201,123 +197,110 @@ def scan_target(raw, checks):
         pct = 0
         c = pr.get("cert")
         info = None
-        res = "tidak terbaca"
+        res = t(lang, "r_unread")
         if isinstance(c, tuple):
             der, trusted, verr = c
             try:
                 info = describe_cert(der)
             except ValueError as e:
-                res = "tidak valid"
-                details.append(("Sertifikat", f"tidak dapat diurai ({e})"))
-                _finding(findings, "crit", "Sertifikat tidak valid",
-                         "Sertifikat tidak sesuai standar X.509 dan ditolak klien modern. Terbitkan ulang dari CA.")
+                res = t(lang, "r_invalid")
+                details.append((t(lang, "d_cert"), t(lang, "dv_unparsable", e=e)))
+                find("crit", "f_cert_invalid")
         else:
-            details.append(("Sertifikat", "tidak dapat diambil (TLS tidak merespons)"))
-            _finding(findings, "crit", "Sertifikat tidak terbaca", "Server tidak menyelesaikan handshake TLS pada port ini.")
+            details.append((t(lang, "d_cert"), t(lang, "dv_no_cert")))
+            find("crit", "f_cert_unread")
         if info:
             res = _key_short(info)
             exp = info["not_after"]
             details += [
-                ("Sertifikat", info["subject"]),
-                ("Penerbit", info["issuer"]),
-                ("Kunci", f"{info['key_label']} | tanda tangan {info['sig_alg']} | berlaku s/d "
-                          f"{exp.strftime('%b %d %H:%M:%S %Y')} GMT"),
-                ("Validasi rantai", "tepercaya" if trusted else f"TIDAK tepercaya ({verr})"),
+                (t(lang, "d_cert"), info["subject"]),
+                (t(lang, "d_issuer"), info["issuer"]),
+                (t(lang, "d_key"), t(lang, "dv_key", label=info["key_label"], sig=info["sig_alg"],
+                                     exp=exp.strftime("%b %d %H:%M:%S %Y"))),
+                (t(lang, "d_chain"), t(lang, "dv_trusted") if trusted else t(lang, "dv_untrusted", err=verr)),
             ]
             kt, bits = info["key_type"], info["key_bits"] or 0
             if kt == "pq":
                 pct = 100
-                _finding(findings, "good", f"Sertifikat PQC ({info['key_label']})",
-                         "Kunci dan tanda tangan sertifikat sudah memakai algoritma tahan kuantum (FIPS 204/205).")
+                find("good", "f_cert_pq", label=info["key_label"])
             elif kt == "rsa" and bits < 2048 or kt == "ecc" and 0 < bits < 256:
                 pct = 20
-                _finding(findings, "crit", f"Kunci sertifikat terlalu kecil ({info['key_label']})",
-                         "Sudah lemah terhadap komputer klasik; terbitkan ulang dengan ECDSA P-256 atau RSA-2048+ "
-                         "sambil menyiapkan ML-DSA.")
+                find("crit", "f_cert_small", label=info["key_label"])
             elif kt in ("rsa", "ecc"):
                 pct = CLASSICAL_CERT_PCT
-                _finding(findings, "high", f"Sertifikat klasik ({info['key_label']})",
-                         "RSA dan ECC sama-sama dipecahkan algoritma Shor; memperbesar kunci RSA tidak menolong. "
-                         "Siapkan migrasi ke ML-DSA (FIPS 204) atau sertifikat hybrid begitu CA menerbitkannya.")
+                find("high", "f_cert_classic", label=info["key_label"])
             else:
                 pct = 20
-                _finding(findings, "crit", "Algoritma kunci sertifikat lemah/tidak dikenal",
-                         "Ganti dengan ECDSA/RSA modern sambil menyiapkan ML-DSA.")
+                find("crit", "f_cert_weak")
             if exp < datetime.now(timezone.utc):
                 pct = 0
-                res += ", kedaluwarsa"
-                _finding(findings, "crit", "Sertifikat kedaluwarsa", "Perbarui sertifikat segera.")
+                res += t(lang, "r_expired")
+                find("crit", "f_cert_expired")
             elif not trusted:
                 pct = max(0, pct - 30)
-                res += ", rantai tidak tepercaya"
-                _finding(findings, "crit", "Rantai sertifikat tidak tepercaya",
-                         f"Validasi gagal: {verr}. Pasang sertifikat dari CA tepercaya beserta intermediate-nya.")
+                res += t(lang, "r_untrusted")
+                find("crit", "f_chain", err=verr)
         components.append(("cert", pct, res))
 
     # --- PQ key exchange ---------------------------------------------------
     if "kex" in checks:
         support = {name: pr.get(f"g{name}") for name, _c, _k in tlsprobe.PQ_GROUPS}
         kinds = {name: kind for name, _c, kind in tlsprobe.PQ_GROUPS}
-        parts = [f"{n} (didukung)" if ok else n for n, ok in support.items()]
-        details.append(("Key exchange PQ", ", ".join(parts)))
+        parts = [t(lang, "dv_supported", name=n) if ok else n for n, ok in support.items()]
+        details.append((t(lang, "d_kex"), ", ".join(parts)))
         std = [n for n, ok in support.items() if ok and kinds[n] in ("hybrid", "pure")]
         draft = support.get("X25519Kyber768Draft00")
         if std:
             pct = 100
-            _finding(findings, "good", f"KEX PQ standar ({'/'.join(std)})",
-                     "Server menerima key exchange ML-KEM (FIPS 203) di TLS 1.3 — SIAP PQC untuk kerahasiaan sesi.")
+            find("good", "f_kex_ok", groups="/".join(std))
         elif draft:
             pct = 50
-            _finding(findings, "high", "Hanya Kyber draft",
-                     "X25519Kyber768Draft00 sudah usang; aktifkan X25519MLKEM768 (codepoint final).")
+            find("high", "f_kex_draft")
         else:
             pct = 0
-            _finding(findings, "crit", "TANPA key exchange PQ di TLS 1.3",
-                     "Lalu lintas rentan harvest-now-decrypt-later — aktifkan X25519MLKEM768 "
-                     "(OpenSSL 3.5+, BoringSSL, Go 1.24+).")
+            find("crit", "f_kex_none")
         if not tls_reachable:
             pct = 0
-        res = ", ".join(std) if std else "hanya Kyber draft" if draft else "tidak ada grup PQ"
+        res = ", ".join(std) if std else t(lang, "r_kyber_only") if draft else t(lang, "r_no_pq")
         components.append(("kex", pct, res))
 
     # --- TLS versions --------------------------------------------------------
     versions = {tlsprobe.VERSION_NAMES[c]: pr.get(f"v{c}") for c in tlsprobe.VERSION_NAMES}
     if "tls" in checks:
         active = [v for v in ("1.0", "1.1", "1.2", "1.3") if versions.get(v)]
-        details.append(("TLS version", ", ".join(active) if active else "tidak ada / port tidak merespons"))
+        details.append((t(lang, "d_tls"), ", ".join(active) if active else t(lang, "dv_no_tls")))
         pts = 0
         if versions.get("1.3"):
             pts = 25
             if not versions.get("1.2"):
                 pts += 15
         else:
-            _finding(findings, "crit", "TLS 1.3 TIDAK aktif", "Tanpa TLS 1.3 tidak ada KEX PQ standar.")
+            find("crit", "f_tls13_off")
         if versions.get("1.2"):
-            _finding(findings, "info", "TLS 1.2 masih aktif",
-                     "Pertahankan hanya untuk kompatibilitas klien lama; matikan setelah migrasi.")
+            find("info", "f_tls12_on")
         old = [v for v in ("1.0", "1.1") if versions.get(v)]
         if old:
             pts = max(0, pts - 10)
-            _finding(findings, "crit", f"TLS {'/'.join(old)} aktif",
-                     "Protokol usang (RFC 8996); nonaktifkan segera.")
-        components.append(("tls", round(pts / 40 * 100), "TLS " + ", ".join(active) if active else "tidak merespons"))
+            find("crit", "f_tls_old", versions="/".join(old))
+        res = "TLS " + ", ".join(active) if active else t(lang, "r_no_response")
+        components.append(("tls", round(pts / 40 * 100), res))
 
     # --- SSH -----------------------------------------------------------------
     if "ssh" in checks:
+        ports = ", ".join(map(str, SSH_PORTS))
         ssh = next((pr.get(f"ssh{p}") for p in SSH_PORTS
                     if isinstance(pr.get(f"ssh{p}"), dict) and "kex" in pr.get(f"ssh{p}")), None)
         open_any = [p for p in SSH_PORTS if isinstance(pr.get(f"ssh{p}"), dict)]
         if ssh is None:
             if open_any:
-                details.append(("SSH", f"port {', '.join(map(str, open_any))} terbuka; KEXINIT tidak terbaca"))
+                details.append((t(lang, "d_ssh"), t(lang, "dv_ssh_unreadable", ports=", ".join(map(str, open_any)))))
                 pct = 50
-                res = "terbuka, KEXINIT tak terbaca"
+                res = t(lang, "r_ssh_unreadable")
             else:
-                details.append(("SSH", f"tertutup pada port {', '.join(map(str, SSH_PORTS))}"))
+                details.append((t(lang, "d_ssh"), t(lang, "dv_ssh_closed", ports=ports)))
                 pct = 100
-                res = "tertutup"
-                _finding(findings, "info", "SSH tertutup",
-                         f"Tidak ada permukaan SSH publik pada port {', '.join(map(str, SSH_PORTS))}.")
+                res = t(lang, "r_ssh_closed")
+                find("info", "f_ssh_closed", ports=ports)
         else:
             hk = ssh["hostkeys"]
             has_rsa = any(k in ("ssh-rsa", "rsa-sha2-256", "rsa-sha2-512") for k in hk)
@@ -328,25 +311,25 @@ def scan_target(raw, checks):
                 if k not in shown:
                     shown.append(k)
             pq = sorted({sshprobe.PQ_KEX[k] for k in ssh["kex"] if k in sshprobe.PQ_KEX})
-            kex_txt = "; ".join(f"{n}: {'ya' if n in pq else 'tidak'}" for n in ("mlkem768x25519", "sntrup761x25519"))
-            details.append(("SSH", f"port {ssh['port']} terbuka ({ssh['banner'][8:]}); host keys "
-                                   f"{', '.join(shown)}; kex PQ {kex_txt}"))
+            kex_txt = "; ".join(f"{n}: {t(lang, 'yes') if n in pq else t(lang, 'no')}"
+                                for n in ("mlkem768x25519", "sntrup761x25519"))
+            details.append((t(lang, "d_ssh"), t(lang, "dv_ssh_open", port=ssh["port"], banner=ssh["banner"][8:],
+                                                 keys=", ".join(shown), kex=kex_txt)))
             pts = (25 if pq else 0) + (15 if has_ed else 0) + (0 if has_rsa else 10)
             pct = round(pts / 50 * 100)
             kinds = dict.fromkeys("RSA" if k == "ssh-rsa" else "ECDSA" if k.startswith("ecdsa") else
                                   "ed25519" if k == "ssh-ed25519" else k for k in shown)
-            res = f"port {ssh['port']}, {'/'.join(pq) or 'tanpa KEX PQ'}, host key {' + '.join(kinds)}"
+            res = f"port {ssh['port']}, {'/'.join(pq) or t(lang, 'r_ssh_no_pq')}, host key {' + '.join(kinds)}"
             if has_ed:
-                _finding(findings, "good", "SSH host key ed25519", "Baik; tetap siapkan transisi ke tanda tangan PQ.")
+                find("good", "f_ssh_ed")
             if has_rsa:
-                _finding(findings, "high", "SSH host key RSA", "Hapus host key RSA, gunakan ed25519; RSA rentan Shor.")
+                find("high", "f_ssh_rsa")
             if "mlkem768x25519" in pq:
-                _finding(findings, "good", "SSH PQ KEX (mlkem768x25519-sha256)", "Server SSH sudah mendukung ML-KEM hybrid.")
+                find("good", "f_ssh_mlkem")
             elif pq:
-                _finding(findings, "info", "SSH PQ KEX sntrup761",
-                         "Sudah tahan kuantum; tambahkan mlkem768x25519-sha256 (OpenSSH >= 9.9).")
+                find("info", "f_ssh_sntrup")
             else:
-                _finding(findings, "crit", "SSH tanpa PQ KEX", "Perbarui OpenSSH server >= 9.9 untuk mlkem768x25519-sha256.")
+                find("crit", "f_ssh_none")
         components.append(("ssh", pct, res))
 
     total_w = sum(CHECKS[k][1] for k, *_ in components)
@@ -357,8 +340,8 @@ def scan_target(raw, checks):
     result.update(
         score=score,
         grade=grade_for(score),
-        components=[{"key": k, "label": CHECKS[k][0], "max": CHECKS[k][1], "pct": p, "result": r, "ref": REFERENCE[k]}
-                    for k, p, r in components],
+        components=[{"key": k, "label": CHECKS[k][0], "max": CHECKS[k][1], "pct": p, "result": r,
+                     "ref": t(lang, f"ref_{k}")} for k, p, r in components],
         details=details,
         findings=findings,
         pqc_status=_pqc_status({k: p for k, p, _ in components}),
