@@ -1,17 +1,17 @@
-"""PDF report in the same shape as the sample scan reports."""
+"""PDF report: the web result sheet, one sheet per host."""
 
 import io
-import math
 import os
 from datetime import datetime
 
-from reportlab.graphics.shapes import Circle, Drawing, Line, Polygon
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
-from reportlab.platypus import Flowable, HRFlowable, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from scanner import WIB
 
@@ -19,215 +19,227 @@ BRAND = os.environ.get("BRAND_NAME", "SecScan PQC")
 SITE = os.environ.get("SITE_NAME", "")
 MADE_BY = f"{BRAND}, {SITE}" if SITE else BRAND
 
-INK = colors.HexColor("#111827")
-MUTED = colors.HexColor("#6b7280")
-LINE = colors.HexColor("#d1d5db")
-BLUE = colors.HexColor("#2563eb")
-GREEN = colors.HexColor("#15803d")
-LIME = colors.HexColor("#65a30d")
-ORANGE = colors.HexColor("#d97706")
-DORANGE = colors.HexColor("#ea580c")
-RED = colors.HexColor("#dc2626")
-GRADE_COLORS = {"A": GREEN, "B": LIME, "C": ORANGE, "D": DORANGE, "E": RED}
-LEVEL = {
-    "crit": (RED, colors.HexColor("#fef2f2")),
-    "high": (colors.HexColor("#b45309"), colors.HexColor("#fffbeb")),
-    "info": (colors.HexColor("#1d4ed8"), colors.HexColor("#eff6ff")),
-    "good": (GREEN, colors.HexColor("#f0fdf4")),
-}
+FONTS = os.path.join(os.path.dirname(__file__), "fonts")
+for name, file in [("Sans", "AtkinsonHyperlegibleNext-Regular"), ("Sans-Bold", "AtkinsonHyperlegibleNext-Bold"),
+                   ("Mono", "AtkinsonHyperlegibleMono-Regular"), ("Mono-Bold", "AtkinsonHyperlegibleMono-Bold")]:
+    pdfmetrics.registerFont(TTFont(name, os.path.join(FONTS, f"{file}.ttf")))
+
+INK = colors.HexColor("#1d2321")
+MUTED = colors.HexColor("#56615d")
+RULE = colors.HexColor("#c9d1ce")
+RULE_SOFT = colors.HexColor("#e3e8e6")
+TEAL = colors.HexColor("#00705f")
+RED = colors.HexColor("#c0262b")
+
+NAMES = {"kex": "Key exchange PQ", "cert": "Sertifikat", "ssh": "SSH", "tls": "Versi TLS"}
+ORDER = ["kex", "cert", "ssh", "tls"]
+LEVEL = {"crit": ("KRITIS", RED), "high": ("PERHATIAN", RED), "info": ("CATATAN", MUTED), "good": ("BAIK", TEAL)}
+STATUS = {"SIAP PQC": "siap PQC", "SEBAGIAN": "sebagian siap", "BELUM SIAP": "belum siap"}
 
 REFERENCES = (
-    "NIST FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), FIPS 205 (SLH-DSA) dan NIST IR 8547 (transisi ke PQC); "
-    "IETF draft-ietf-tls-ecdhe-mlkem (X25519MLKEM768); catatan rilis OpenSSL 3.5 dan OpenSSH 9.9/10.0; "
-    "serta publikasi Badan Siber dan Sandi Negara (bssn.go.id) terkait migrasi kriptografi tahan kuantum."
+    "NIST FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), FIPS 205 (SLH-DSA), NIST IR 8547; RFC 10024 (hybrid ML-KEM untuk TLS 1.3); "
+    "RFC 8446; RFC 8996; BSSN, Panduan Migrasi ke Post-Quantum Cryptography v1.0 (2025)."
 )
 
 
 def _s(name, **kw):
-    base = dict(fontName="Helvetica", fontSize=9, leading=12, textColor=INK)
+    base = dict(fontName="Sans", fontSize=9, leading=12.5, textColor=INK)
     base.update(kw)
     return ParagraphStyle(name, **base)
 
 
-S_TITLE = _s("t", fontName="Helvetica-Bold", fontSize=17, leading=21)
-S_SUB = _s("sub", fontSize=8.5, textColor=MUTED)
-S_H2 = _s("h2", fontName="Helvetica-Bold", fontSize=13, leading=17, spaceBefore=8, spaceAfter=4)
-S_HOST = _s("host", fontName="Helvetica-Bold", fontSize=14, leading=17)
-S_SCORE = _s("score", fontName="Helvetica-Bold", fontSize=22, leading=24, alignment=TA_RIGHT)
-S_SMALL = _s("small", fontSize=7.5, textColor=MUTED)
-S_NOTE = _s("note", fontName="Helvetica-Oblique", fontSize=7.5, textColor=colors.HexColor("#9ca3af"))
-S_CELL = _s("cell", fontSize=8.5, leading=11)
-S_CELLB = _s("cellb", fontName="Helvetica-Bold", fontSize=8.5, leading=11)
-S_REF = _s("ref", fontSize=8, leading=11, textColor=MUTED)
+S_BRAND = _s("brand", fontName="Sans-Bold", fontSize=12, leading=14)
+S_BY = _s("by", fontSize=8, textColor=MUTED)
+S_NO = _s("no", fontName="Mono", fontSize=8, leading=11, textColor=MUTED, alignment=TA_RIGHT)
+S_TITLE = _s("title", fontName="Sans-Bold", fontSize=10.5, leading=13)
+S_SUB = _s("sub", fontSize=8, textColor=MUTED)
+S_LABEL = _s("label", fontSize=7.5, leading=9, textColor=MUTED)
+S_VALUE = _s("value", fontName="Mono", fontSize=9.5, leading=12)
+S_CAP = _s("cap", fontName="Sans-Bold", fontSize=8, leading=10)
+S_CELL = _s("cell", fontSize=9, leading=11.5)
+S_CELL_MUTED = _s("cellm", fontSize=8.5, leading=11, textColor=MUTED)
+S_CELL_MONO = _s("cellmono", fontName="Mono", fontSize=9, leading=11.5)
+S_CELL_MONO_B = _s("cellmonob", fontName="Mono-Bold", fontSize=9, leading=11.5)
+S_NUM = _s("num", fontName="Mono", fontSize=9, leading=11.5, alignment=TA_RIGHT)
+S_TOTAL = _s("total", fontName="Sans-Bold", fontSize=9.5, leading=12, alignment=TA_RIGHT)
+S_SCORE = _s("score", fontName="Mono-Bold", fontSize=22, leading=24, alignment=TA_RIGHT)
+S_LEGEND = _s("legend", fontSize=7.5, leading=10, textColor=MUTED)
+S_FIND = _s("find", fontName="Sans-Bold", fontSize=9, leading=11.5)
+S_FIND_TEXT = _s("findt", fontSize=8.5, leading=11, textColor=MUTED)
+S_TECH_K = _s("techk", fontSize=8, leading=10.5, textColor=MUTED)
+S_TECH_V = _s("techv", fontName="Mono", fontSize=7.5, leading=10)
+S_ERR = _s("err", textColor=RED)
+
+WIDTH = A4[0] - 32 * mm
 
 
 def _esc(t):
     return str(t).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def logo(size=34):
-    d = Drawing(size, size)
-    c = size / 2
-    d.add(Circle(c, c, c - 1, fillColor=BLUE, strokeColor=None))
-    r = size * 0.28
-    pts = []
-    for i in range(6):
-        a = math.pi / 6 + i * math.pi / 3
-        pts += [c + r * math.cos(a), c + r * math.sin(a)]
-    d.add(Polygon(pts, fillColor=None, strokeColor=colors.white, strokeWidth=1.6))
-    d.add(Circle(c, c, size * 0.07, fillColor=colors.white, strokeColor=None))
-    d.add(Line(c, c, c + r * 1.25, c - r * 1.25, strokeColor=colors.white, strokeWidth=1.6))
-    return d
+def _letterhead(created, no):
+    brand = Table([[Paragraph("PQ", _s("code", fontName="Mono-Bold", fontSize=8.5, leading=10)),
+                    Paragraph(_esc(BRAND), S_BRAND)]], colWidths=[9 * mm, None])
+    brand.setStyle(TableStyle([("BOX", (0, 0), (0, 0), 1.1, INK), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                               ("LEFTPADDING", (0, 0), (0, 0), 2), ("RIGHTPADDING", (0, 0), (0, 0), 2),
+                               ("TOPPADDING", (0, 0), (0, 0), 2), ("BOTTOMPADDING", (0, 0), (0, 0), 1)]))
+    left = [brand, Spacer(1, 2), Paragraph("oleh MiraeStudio.id" + (f" · {_esc(SITE)}" if SITE else ""), S_BY)]
+    right = Paragraph(f"No. {_esc(no)}<br/>{created.strftime('%d-%m-%Y %H:%M')} WIB", S_NO)
+    t = Table([[left, right]], colWidths=[WIDTH * 0.6, WIDTH * 0.4])
+    t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                           ("RIGHTPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                           ("LINEBELOW", (0, 0), (-1, 0), 0.6, RULE)]))
+    return t
 
 
-class Badge(Flowable):
-    def __init__(self, text, color, w=20, h=13, size=8):
-        super().__init__()
-        self.text, self.color, self.width, self.height, self.size = text, color, w, h, size
-
-    def draw(self):
-        c = self.canv
-        c.setFillColor(self.color)
-        c.setStrokeColor(colors.black)
-        c.setLineWidth(0.4)
-        c.roundRect(0, 0, self.width, self.height, 2.5, fill=1, stroke=1)
-        c.setFillColor(colors.white)
-        c.setFont("Helvetica-Bold", self.size)
-        c.drawCentredString(self.width / 2, (self.height - self.size) / 2 + 1.5, self.text)
+def _title():
+    t = Table([[[Paragraph("HASIL PEMERIKSAAN KESIAPAN PQC", S_TITLE),
+                 Paragraph("Diperiksa dari luar, read-only", S_SUB)]]], colWidths=[WIDTH])
+    t.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, -1), 1.6, INK), ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                           ("TOPPADDING", (0, 0), (-1, -1), 10), ("BOTTOMPADDING", (0, 0), (-1, -1), 7)]))
+    return t
 
 
-class Bar(Flowable):
-    def __init__(self, pct, w=114 * mm, h=4.2 * mm):
-        super().__init__()
-        self.pct, self.width, self.height = pct, w, h
-
-    def draw(self):
-        c = self.canv
-        p = self.pct
-        col = GREEN if p >= 90 else BLUE if p >= 50 else ORANGE if p > 0 else None
-        c.setStrokeColor(colors.black)
-        c.setLineWidth(0.6)
-        c.setFillColor(colors.HexColor("#f3f4f6"))
-        c.roundRect(0, 0, self.width, self.height, self.height / 2, fill=1, stroke=1)
-        if col and p > 0:
-            c.setFillColor(col)
-            c.roundRect(0, 0, max(self.height, self.width * p / 100), self.height, self.height / 2, fill=1, stroke=1)
+def _patient(r, when):
+    host = (r.get("host") or r["target"]) + (f":{r['port']}" if r.get("port") and r["port"] != 443 else "")
+    cells = [("Host", host), ("Alamat IP", r.get("ip", "–")), ("Waktu pemeriksaan", when)]
+    t = Table([[[Paragraph(k, S_LABEL), Paragraph(_esc(v), S_VALUE)] for k, v in cells]], colWidths=[WIDTH / 3] * 3)
+    t.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 7),
+                           ("BOTTOMPADDING", (0, 0), (-1, -1), 7), ("LINEBELOW", (0, 0), (-1, -1), 0.6, RULE),
+                           ("VALIGN", (0, 0), (-1, -1), "TOP")]))
+    return t
 
 
-def _header(created):
-    title = Paragraph(f"Laporan Hasil Scan Kesiapan PQC<br/>PQC Readiness oleh {_esc(BRAND)}", S_TITLE)
-    site = f"{_esc(SITE)} | " if SITE else ""
-    sub = Paragraph(f"{site}dibuat {created.strftime('%d-%m-%Y %H:%M:%S')} WIB | "
-                    f"scan read-only dari sisi luar", S_SUB)
-    t = Table([[logo(), [title, Spacer(1, 3), sub]]], colWidths=[16 * mm, None])
+class _Flag(Table):
+    def __init__(self, pct):
+        if pct >= 100:
+            super().__init__([[""]], colWidths=[7 * mm], rowHeights=[5 * mm])
+            return
+        crit = pct < 50
+        style = _s("flag", fontName="Mono-Bold", fontSize=8.5, leading=10, alignment=1,
+                   textColor=colors.white if crit else RED)
+        super().__init__([[Paragraph("!" if crit else "L", style)]], colWidths=[6 * mm], rowHeights=[5 * mm])
+        cmds = [("BOX", (0, 0), (-1, -1), 1, RED), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 1)]
+        if crit:
+            cmds.append(("BACKGROUND", (0, 0), (-1, -1), RED))
+        self.setStyle(TableStyle(cmds))
+
+
+def _results(r):
+    comps = [c for k in ORDER for c in r["components"] if c["key"] == k]
+    head = [Paragraph(h, S_LABEL) for h in ("Pemeriksaan", "Hasil", "Nilai rujukan")]
+    head += [Paragraph("Nilai", _s("hn", fontSize=7.5, leading=9, textColor=MUTED, alignment=TA_RIGHT)),
+             Paragraph("Flag", S_LABEL),
+             Paragraph("Bobot", _s("hb", fontSize=7.5, leading=9, textColor=MUTED, alignment=TA_RIGHT))]
+    rows = [head]
+    for c in comps:
+        rows.append([Paragraph(NAMES[c["key"]], S_CELL),
+                     Paragraph(_esc(c["result"]), S_CELL_MONO_B if c["pct"] < 100 else S_CELL_MONO),
+                     Paragraph(_esc(c["ref"]), S_CELL_MUTED),
+                     Paragraph(str(c["pct"]), S_NUM), _Flag(c["pct"]), Paragraph(str(c["max"]), S_NUM)])
+    status = STATUS.get(r["pqc_status"], r["pqc_status"])
+    grade = Table([[Paragraph(r["grade"], _s("g", fontName="Mono-Bold", fontSize=11, leading=12, alignment=1))]],
+                  colWidths=[8 * mm], rowHeights=[7 * mm])
+    grade.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 1.1, INK), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                               ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 1)]))
+    total = Table([[Paragraph(f"Skor komposit, status {_esc(status)}", S_TOTAL),
+                    Paragraph(f"{r['score']}<font size=10>/100</font>", S_SCORE), grade]],
+                  colWidths=[None, 26 * mm, 11 * mm])
+    total.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                               ("RIGHTPADDING", (0, 0), (-1, -1), 0), ("ALIGN", (2, 0), (2, 0), "RIGHT")]))
+    rows.append([total, "", "", "", "", ""])
+    t = Table(rows, colWidths=[30 * mm, 38 * mm, None, 12 * mm, 11 * mm, 12 * mm], repeatRows=1)
+    n = len(rows) - 1
     t.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LINEBELOW", (0, 0), (-1, 0), 1.2, BLUE),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-        ("LEFTPADDING", (0, 0), (0, 0), 0),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.9, INK),
+        ("LINEBELOW", (0, 1), (-1, n - 1), 0.5, RULE_SOFT),
+        ("LINEABOVE", (0, n), (-1, n), 1.6, INK), ("SPAN", (0, n), (-1, n)), ("TOPPADDING", (0, n), (-1, n), 9),
+        ("ALIGN", (4, 1), (4, n - 1), "CENTER"), ("RIGHTPADDING", (-1, 0), (-1, -1), 0),
     ]))
     return t
 
 
-def _summary(summary):
-    head = [Paragraph("Rata-rata skor (nilai 1-100)", S_SMALL)]
-    vals = [Paragraph(f"<font color='#2563eb'><b>{summary['avg']}</b></font>", _s("avg", fontSize=18, leading=20))]
-    for g in "ABCDE":
-        head.append(Paragraph(f"Grade {g}", S_SMALL))
-        vals.append(Badge(str(summary["grades"][g]), GRADE_COLORS[g]))
-    head.append(Paragraph(f"Host dipindai: {summary['hosts']}", S_SMALL))
-    vals.append("")
-    t = Table([head, vals], colWidths=[48 * mm] + [20 * mm] * 5 + [None])
+def _conclusion(findings):
+    rows = [[Paragraph("KESIMPULAN", S_CAP), ""]]
+    for f in findings:
+        label, color = LEVEL[f["level"]]
+        rows.append([Paragraph(label, _s(f"l{f['level']}", fontName="Mono-Bold", fontSize=7, leading=11, textColor=color)),
+                     [Paragraph(_esc(f["title"]), S_FIND), Paragraph(_esc(f["text"]), S_FIND_TEXT)]])
+    t = Table(rows, colWidths=[24 * mm, None])
     t.setStyle(TableStyle([
-        ("BOX", (0, 0), (-1, -1), 0.6, LINE),
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f9fafb")),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING", (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("BOX", (0, 0), (-1, -1), 0.9, INK), ("LINEBELOW", (0, 0), (-1, 0), 0.9, INK), ("SPAN", (0, 0), (-1, 0)),
+        ("LINEBELOW", (0, 1), (-1, -2), 0.5, RULE_SOFT), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 7), ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+        ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
     ]))
     return t
 
 
-def _host_block(r):
-    out = [Paragraph(f"Hasil scan: {_esc(r.get('host') or r['target'])}", S_H2)]
-    when = datetime.fromisoformat(r["scanned_at"]).strftime("%Y-%m-%d %H:%M:%S")
+def _tech(details):
+    t = Table([[Paragraph(_esc(k), S_TECH_K), Paragraph(_esc(v), S_TECH_V)] for k, v in details],
+              colWidths=[30 * mm, None])
+    t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                           ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                           ("LINEBELOW", (0, 0), (-1, -1), 0.4, RULE_SOFT)]))
+    return t
+
+
+def _sheet(r, created, no):
+    when = datetime.fromisoformat(r["scanned_at"]).astimezone(WIB).strftime("%d-%m-%Y %H:%M WIB")
+    out = [_letterhead(created, no), _title(), _patient(r, when)]
     if "error" in r:
-        out.append(Paragraph(f"{_esc(r['target'])} — <font color='#dc2626'>gagal: {_esc(r['error'])}</font>", S_CELL))
-        return out
-    port = f":{r['port']}" if r["port"] != 443 else ""
-    top = Table([
-        [Paragraph(_esc(r["host"] + port), S_HOST), Paragraph(str(r["score"]), S_SCORE)],
-        [Paragraph(f"scan {when} &nbsp;|&nbsp; durasi {r['duration']} dtk &nbsp;|&nbsp; IP {r['ip']} "
-                   f"&nbsp;|&nbsp; status PQC: <b>{r['pqc_status']}</b>", S_SMALL),
-         Badge(r["grade"], GRADE_COLORS[r["grade"]], w=24, h=13)],
-    ], colWidths=[None, 26 * mm])
-    top.setStyle(TableStyle([
-        ("ALIGN", (1, 0), (1, -1), "RIGHT"), ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
-        ("LEFTPADDING", (0, 0), (0, -1), 0), ("RIGHTPADDING", (1, 0), (1, -1), 0),
-    ]))
-    out.append(top)
-    out.append(Spacer(1, 4))
-
-    rows = [[Paragraph(f"{c['label']} (max {c['max']})", S_CELL), Bar(c["pct"]),
-             Paragraph(f"<b>{c['pct']}%</b>", _s("p", fontSize=8, alignment=TA_RIGHT))]
-            for c in r["components"]]
-    bars = Table(rows, colWidths=[40 * mm, 118 * mm, None])
-    bars.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (0, 0), (0, -1), 0),
-                              ("TOPPADDING", (0, 0), (-1, -1), 1.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5)]))
-    out.append(bars)
-    weights = ", ".join(f"{c['label']} {c['max']}" for c in r["components"])
-    out.append(Spacer(1, 4))
-    out.append(Paragraph(f"Skor komposit {r['score']}/100 dari bobot {weights}", S_NOTE))
-    out.append(Spacer(1, 6))
-
-    det = Table([[Paragraph(_esc(k), S_CELLB), Paragraph(_esc(v), S_CELL)] for k, v in r["details"]],
-                colWidths=[32 * mm, None])
-    det.setStyle(TableStyle([
-        ("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.white, colors.HexColor("#f9fafb")]),
-        ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#e5e7eb")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-    ]))
-    out.append(det)
-
+        return out + [Spacer(1, 10), Paragraph(f"Tidak dapat diperiksa: {_esc(r['error'])}.", S_ERR)]
+    out += [Spacer(1, 10), Paragraph("HASIL", S_CAP), Spacer(1, 3), _results(r), Spacer(1, 4),
+            Paragraph("Nilai 0–100 per pemeriksaan. L: di bawah nilai rujukan. !: kritis. "
+                      "Skor komposit = rata-rata tertimbang dengan bobot.", S_LEGEND)]
     if r["findings"]:
-        out.append(Paragraph("Temuan dan rekomendasi", S_H2))
-        frows, styles = [], [("VALIGN", (0, 0), (-1, -1), "TOP"), ("BOX", (0, 0), (-1, -1), 0.4, LINE)]
-        for i, f in enumerate(r["findings"]):
-            fg, bg = LEVEL[f["level"]]
-            frows.append([Paragraph(f"<b>{_esc(f['title'])}</b>", _s(f"f{i}", fontSize=8.5, leading=11, textColor=fg)),
-                          Paragraph(_esc(f["text"]), S_CELL)])
-            styles.append(("BACKGROUND", (0, i), (-1, i), bg))
-        ft = Table(frows, colWidths=[68 * mm, None])
-        ft.setStyle(TableStyle(styles))
-        out.append(ft)
+        out += [Spacer(1, 12), _conclusion(r["findings"])]
+    out += [Spacer(1, 12), KeepTogether([Paragraph("RINCIAN TEKNIS", S_CAP), Spacer(1, 3), _tech(r["details"])])]
+    out += [Spacer(1, 14), Paragraph(f"<b>Rujukan</b>: {REFERENCES}", S_LEGEND)]
+    if SITE:
+        out.append(Paragraph(f"Metode dan nilai rujukan: https://{_esc(SITE)}/metodologi", S_LEGEND))
     return out
+
+
+def _batch(scan, created, code):
+    rows = [[Paragraph(h, S_LABEL) for h in ("Host", "Skor", "Grade", "No. lembar")]]
+    for i, r in enumerate(scan["results"], 1):
+        ok = "error" not in r
+        rows.append([Paragraph(_esc(r.get("host") or r["target"]), S_CELL_MONO),
+                     Paragraph(str(r["score"]) if ok else "–", S_CELL_MONO),
+                     Paragraph(r["grade"] if ok else "gagal", S_CELL_MONO), Paragraph(f"{code}-{i}", S_CELL_MONO)])
+    t = Table(rows, colWidths=[None, 20 * mm, 20 * mm, 32 * mm])
+    t.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0), ("LINEBELOW", (0, 0), (-1, 0), 0.9, INK),
+                           ("LINEBELOW", (0, 1), (-1, -1), 0.5, RULE_SOFT), ("TOPPADDING", (0, 0), (-1, -1), 5),
+                           ("BOTTOMPADDING", (0, 0), (-1, -1), 5)]))
+    return [_letterhead(created, code), Spacer(1, 10), Paragraph("RINGKASAN PEMERIKSAAN", S_TITLE), Spacer(1, 2),
+            Paragraph(f"{len(scan['results'])} host, rata-rata skor {scan['summary']['avg']}", S_SUB), Spacer(1, 8), t,
+            PageBreak()]
 
 
 def build_pdf(scan):
     buf = io.BytesIO()
     created = datetime.fromisoformat(scan["created"]).astimezone(WIB)
+    code = scan["id"][:8].upper()
 
     def footer(canvas, doc):
         canvas.saveState()
-        canvas.setFont("Helvetica", 7.5)
-        canvas.setFillColor(colors.HexColor("#9ca3af"))
-        canvas.drawCentredString(A4[0] / 2, 12 * mm, f"Dibuat oleh {MADE_BY} | halaman {doc.page}")
+        canvas.setFont("Sans", 7.5)
+        canvas.setFillColor(MUTED)
+        canvas.drawString(16 * mm, 11 * mm, f"Dibuat oleh {MADE_BY} · pemeriksaan read-only dari luar")
+        canvas.drawRightString(A4[0] - 16 * mm, 11 * mm, f"halaman {doc.page}")
         canvas.restoreState()
 
-    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,
-                            topMargin=14 * mm, bottomMargin=20 * mm,
-                            title="Laporan Scan PQC Readiness", author=BRAND)
-    story = [_header(created), Spacer(1, 8), _summary(scan["summary"]), Spacer(1, 6)]
-    for r in scan["results"]:
-        blk = _host_block(r)
-        story.append(KeepTogether(blk[:4]))
-        story += blk[4:]
-        story.append(Spacer(1, 8))
-    story.append(KeepTogether([
-        HRFlowable(width="100%", thickness=0.6, color=LINE, spaceAfter=4),
-        Paragraph("<b>Sumber rujukan</b>", S_CELL),
-        Paragraph(REFERENCES, S_REF),
-        *([Paragraph(f"Cara menghitung skor: https://{_esc(SITE)}/metodologi", S_REF)] if SITE else []),
-    ]))
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=14 * mm,
+                            bottomMargin=18 * mm, title="Hasil Pemeriksaan Kesiapan PQC", author=BRAND)
+    story = _batch(scan, created, code) if len(scan["results"]) > 1 else []
+    for i, r in enumerate(scan["results"], 1):
+        if i > 1:
+            story.append(PageBreak())
+        story += _sheet(r, created, f"{code}-{i}")
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
     return buf.getvalue()

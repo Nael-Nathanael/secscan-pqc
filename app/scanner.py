@@ -24,6 +24,20 @@ CHECKS = {
 SSH_PORTS = (22, 2222)
 # Any trusted classical key (RSA >= 2048, ECC >= 256, EdDSA): Shor breaks them all alike.
 CLASSICAL_CERT_PCT = 65
+# What full marks looks like, per check (the "nilai rujukan" on the result sheet).
+REFERENCE = {
+    "kex": "ML-KEM standar, mis. X25519MLKEM768",
+    "cert": "ML-DSA atau SLH-DSA",
+    "tls": "TLS 1.3 saja",
+    "ssh": "tertutup, atau mlkem768x25519 + ed25519 tanpa RSA",
+}
+
+
+def _key_short(info):
+    names = {"rsa": "RSA", "ecc": "ECDSA", "dsa": "DSA"}
+    if info["key_type"] in names and info["key_bits"]:
+        return f"{names[info['key_type']]} {info['key_bits']}-bit"
+    return info["key_label"]
 
 PQ_SIG_OIDS = {
     "2.16.840.1.101.3.4.3.17": "ML-DSA-44",
@@ -187,11 +201,13 @@ def scan_target(raw, checks):
         pct = 0
         c = pr.get("cert")
         info = None
+        res = "tidak terbaca"
         if isinstance(c, tuple):
             der, trusted, verr = c
             try:
                 info = describe_cert(der)
             except ValueError as e:
+                res = "tidak valid"
                 details.append(("Sertifikat", f"tidak dapat diurai ({e})"))
                 _finding(findings, "crit", "Sertifikat tidak valid",
                          "Sertifikat tidak sesuai standar X.509 dan ditolak klien modern. Terbitkan ulang dari CA.")
@@ -199,6 +215,7 @@ def scan_target(raw, checks):
             details.append(("Sertifikat", "tidak dapat diambil (TLS tidak merespons)"))
             _finding(findings, "crit", "Sertifikat tidak terbaca", "Server tidak menyelesaikan handshake TLS pada port ini.")
         if info:
+            res = _key_short(info)
             exp = info["not_after"]
             details += [
                 ("Sertifikat", info["subject"]),
@@ -228,12 +245,14 @@ def scan_target(raw, checks):
                          "Ganti dengan ECDSA/RSA modern sambil menyiapkan ML-DSA.")
             if exp < datetime.now(timezone.utc):
                 pct = 0
+                res += ", kedaluwarsa"
                 _finding(findings, "crit", "Sertifikat kedaluwarsa", "Perbarui sertifikat segera.")
             elif not trusted:
                 pct = max(0, pct - 30)
+                res += ", rantai tidak tepercaya"
                 _finding(findings, "crit", "Rantai sertifikat tidak tepercaya",
                          f"Validasi gagal: {verr}. Pasang sertifikat dari CA tepercaya beserta intermediate-nya.")
-        components.append(("cert", pct))
+        components.append(("cert", pct, res))
 
     # --- PQ key exchange ---------------------------------------------------
     if "kex" in checks:
@@ -258,7 +277,8 @@ def scan_target(raw, checks):
                      "(OpenSSL 3.5+, BoringSSL, Go 1.24+).")
         if not tls_reachable:
             pct = 0
-        components.append(("kex", pct))
+        res = ", ".join(std) if std else "hanya Kyber draft" if draft else "tidak ada grup PQ"
+        components.append(("kex", pct, res))
 
     # --- TLS versions --------------------------------------------------------
     versions = {tlsprobe.VERSION_NAMES[c]: pr.get(f"v{c}") for c in tlsprobe.VERSION_NAMES}
@@ -280,7 +300,7 @@ def scan_target(raw, checks):
             pts = max(0, pts - 10)
             _finding(findings, "crit", f"TLS {'/'.join(old)} aktif",
                      "Protokol usang (RFC 8996); nonaktifkan segera.")
-        components.append(("tls", round(pts / 40 * 100)))
+        components.append(("tls", round(pts / 40 * 100), "TLS " + ", ".join(active) if active else "tidak merespons"))
 
     # --- SSH -----------------------------------------------------------------
     if "ssh" in checks:
@@ -291,9 +311,11 @@ def scan_target(raw, checks):
             if open_any:
                 details.append(("SSH", f"port {', '.join(map(str, open_any))} terbuka; KEXINIT tidak terbaca"))
                 pct = 50
+                res = "terbuka, KEXINIT tak terbaca"
             else:
                 details.append(("SSH", f"tertutup pada port {', '.join(map(str, SSH_PORTS))}"))
                 pct = 100
+                res = "tertutup"
                 _finding(findings, "info", "SSH tertutup",
                          f"Tidak ada permukaan SSH publik pada port {', '.join(map(str, SSH_PORTS))}.")
         else:
@@ -311,6 +333,9 @@ def scan_target(raw, checks):
                                    f"{', '.join(shown)}; kex PQ {kex_txt}"))
             pts = (25 if pq else 0) + (15 if has_ed else 0) + (0 if has_rsa else 10)
             pct = round(pts / 50 * 100)
+            kinds = dict.fromkeys("RSA" if k == "ssh-rsa" else "ECDSA" if k.startswith("ecdsa") else
+                                  "ed25519" if k == "ssh-ed25519" else k for k in shown)
+            res = f"port {ssh['port']}, {'/'.join(pq) or 'tanpa KEX PQ'}, host key {' + '.join(kinds)}"
             if has_ed:
                 _finding(findings, "good", "SSH host key ed25519", "Baik; tetap siapkan transisi ke tanda tangan PQ.")
             if has_rsa:
@@ -322,20 +347,21 @@ def scan_target(raw, checks):
                          "Sudah tahan kuantum; tambahkan mlkem768x25519-sha256 (OpenSSH >= 9.9).")
             else:
                 _finding(findings, "crit", "SSH tanpa PQ KEX", "Perbarui OpenSSH server >= 9.9 untuk mlkem768x25519-sha256.")
-        components.append(("ssh", pct))
+        components.append(("ssh", pct, res))
 
-    total_w = sum(CHECKS[k][1] for k, _ in components)
-    score = round(sum(CHECKS[k][1] * p / 100 for k, p in components) / total_w * 100) if total_w else 0
+    total_w = sum(CHECKS[k][1] for k, *_ in components)
+    score = round(sum(CHECKS[k][1] * p / 100 for k, p, _ in components) / total_w * 100) if total_w else 0
     order = {"crit": 0, "high": 1, "info": 2, "good": 3}
     findings.sort(key=lambda f: order[f["level"]])
 
     result.update(
         score=score,
         grade=grade_for(score),
-        components=[{"key": k, "label": CHECKS[k][0], "max": CHECKS[k][1], "pct": p} for k, p in components],
+        components=[{"key": k, "label": CHECKS[k][0], "max": CHECKS[k][1], "pct": p, "result": r, "ref": REFERENCE[k]}
+                    for k, p, r in components],
         details=details,
         findings=findings,
-        pqc_status=_pqc_status(components),
+        pqc_status=_pqc_status({k: p for k, p, _ in components}),
         duration=round(time.monotonic() - started, 1),
     )
     return result

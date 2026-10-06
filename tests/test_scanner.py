@@ -148,6 +148,18 @@ def test_composite_and_status(scan):
     assert r["pqc_status"] == "SEBAGIAN"
 
 
+def test_sheet_fields(scan):
+    ssh = {"port": 22, "banner": "SSH-2.0-OpenSSH_9.6", "kex": ["sntrup761x25519-sha512@openssh.com"],
+           "hostkeys": ["rsa-sha2-512", "ecdsa-sha2-nistp256", "ssh-ed25519"]}
+    r = scan(cert=make_cert(ec.generate_private_key(ec.SECP256R1())), versions=(TLS13, TLS12), ssh=ssh)
+    got = {c["key"]: (c["result"], c["ref"]) for c in r["components"]}
+    assert got["cert"][0] == "ECDSA 256-bit"
+    assert got["kex"][0] == "X25519MLKEM768"
+    assert got["tls"][0] == "TLS 1.2, 1.3"
+    assert got["ssh"][0] == "port 22, sntrup761x25519, host key RSA + ECDSA + ed25519"
+    assert all(ref == scanner.REFERENCE[k] for k, (_res, ref) in got.items())
+
+
 @pytest.mark.parametrize("score,grade", [(100, "A"), (90, "A"), (89, "B"), (65, "C"), (50, "D"), (49, "E")])
 def test_grade_bands(score, grade):
     assert scanner.grade_for(score) == grade

@@ -3,115 +3,356 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SecScan PQC</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='15' fill='%232563eb'/><polygon points='22,19.5 16,23 10,19.5 10,12.5 16,9 22,12.5' fill='none' stroke='white' stroke-width='2'/></svg>">
+<title>SecScan PQC: periksa kesiapan kriptografi pasca-kuantum</title>
+<meta name="description" content="Periksa kesiapan sebuah server menghadapi komputer kuantum, lalu pelajari cara membaca hasilnya: key exchange ML-KEM, sertifikat, versi TLS, dan SSH.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='5' y='2' width='22' height='28' fill='white' stroke='%231d2321' stroke-width='2'/><rect x='5' y='2' width='22' height='7' fill='%2300705f'/><path d='M9 15h14M9 20h14M9 25h9' stroke='%231d2321' stroke-width='2'/></svg>">
+<link rel="preload" href="/static/fonts/atkinson-next.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
+<header class="letterhead">
+  <div class="wrap">
+    <a class="brand" href="/"><span class="brand-code">PQ</span><span class="brand-name">SecScan PQC</span></a>
+    <span class="brand-by">oleh <a href="https://miraestudio.id">MiraeStudio.id</a></span>
+    <nav aria-label="Utama">
+      <a href="/" aria-current="page">Periksa</a>
+      <a href="#membaca">Membaca hasil</a>
+      <a href="/metodologi">Metode &amp; nilai rujukan</a>
+      <a href="https://github.com/Nael-Nathanael/secscan-pqc">Kode sumber</a>
+    </nav>
+  </div>
+</header>
+
 <main>
-  <header>
-    <svg width="36" height="36" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#2563eb"/><polygon points="22,19.5 16,23 10,19.5 10,12.5 16,9 22,12.5" fill="none" stroke="#fff" stroke-width="2"/><circle cx="16" cy="16" r="2" fill="#fff"/></svg>
-    <div>
-      <h1>Scan Kesiapan PQC</h1>
-      <p>Cek kesiapan kriptografi tahan kuantum dari sisi luar — read-only, tanpa mengubah apa pun di server.</p>
-    </div>
-    <nav><a href="/" aria-current="page">Scan</a><a href="/metodologi">Metodologi &amp; teori</a></nav>
-  </header>
+  <section class="wrap intro">
+    <h1>Seberapa siap server Anda menghadapi komputer kuantum?</h1>
+    <p>SecScan memeriksa server dari luar, seperti browser biasa, lalu menulis hasilnya seperti lembar hasil laboratorium:
+      tiap pemeriksaan dibandingkan dengan nilai rujukan. Di bawah ini hasil asli untuk situs kami sendiri, miraestudio.id,
+      lengkap dengan <a href="/static/contoh/miraestudio-id.pdf">laporan PDF-nya</a>.</p>
+  </section>
 
-  <form id="f" class="card">
-    <label class="label" for="targets">Domain atau IP (satu per baris, maks 4)</label>
-    <textarea id="targets" spellcheck="false" placeholder="contoh.go.id&#10;bank.co.id:8443&#10;203.0.113.10" required></textarea>
-    <div class="hint">Port default 443. Tulis <code>host:port</code> untuk port lain. Durasi ±5–30 detik per target.</div>
-
-    <span class="label" style="margin-top:16px">Metode testing</span>
-    <div class="methods">
-      <label><input type="checkbox" name="check" value="kex" checked><span><b>KEX PQ (TLS 1.3)</b><small>ML-KEM hybrid: X25519MLKEM768, SecP256r1MLKEM768, MLKEM1024… · bobot 100</small></span></label>
-      <label><input type="checkbox" name="check" value="cert" checked><span><b>Sertifikat</b><small>Jenis &amp; ukuran kunci, tanda tangan (RSA/ECC/ML-DSA), validitas · bobot 60</small></span></label>
-      <label><input type="checkbox" name="check" value="tls" checked><span><b>Versi TLS</b><small>TLS 1.3 wajib, 1.2 diminimalkan, 1.0/1.1 dilarang · bobot 40</small></span></label>
-      <label><input type="checkbox" name="check" value="ssh" checked><span><b>SSH</b><small>Port 22/2222: host key &amp; PQ KEX (mlkem768x25519, sntrup761) · bobot 50</small></span></label>
+  <div class="wrap desk">
+    <div class="sheets" id="sheets" aria-live="polite">
+      <noscript><p>Aktifkan JavaScript untuk melihat contoh hasil dan menjalankan pemeriksaan.</p></noscript>
     </div>
 
-    <div class="actions">
-      <input id="pw" type="password" placeholder="Password" autocomplete="current-password" aria-label="Password">
-      <button id="go" type="submit">Mulai scan</button>
-      <span id="status" class="status" aria-live="polite"></span>
-    </div>
-  </form>
+    <form class="slip" id="slip">
+      <h2>Formulir pemeriksaan</h2>
+      <p class="lede">Hanya membaca balasan pertama server. Tidak ada login, tidak ada data yang diubah.</p>
 
-  <section id="results"></section>
-  <footer>Skor komposit 0–100 = rata-rata tertimbang metode yang dipilih. Cara menghitung dan dasar teorinya: <a href="/metodologi">Metodologi &amp; teori</a>.</footer>
+      <label class="field" for="targets"><span>Target</span>
+        <textarea id="targets" spellcheck="false" autocapitalize="off" placeholder="contoh.go.id&#10;bank.co.id:8443" required></textarea>
+        <small>Satu per baris, maksimal 4. Port bawaan 443.</small>
+      </label>
+
+      <fieldset>
+        <legend>Panel pemeriksaan</legend>
+        <label class="panel"><input type="checkbox" name="check" value="kex" checked><span>Key exchange PQ (TLS 1.3)</span><em>bobot 100</em></label>
+        <label class="panel"><input type="checkbox" name="check" value="cert" checked><span>Sertifikat</span><em>bobot 60</em></label>
+        <label class="panel"><input type="checkbox" name="check" value="ssh" checked><span>SSH (port 22, 2222)</span><em>bobot 50</em></label>
+        <label class="panel"><input type="checkbox" name="check" value="tls" checked><span>Versi TLS</span><em>bobot 40</em></label>
+      </fieldset>
+
+      <label class="field" for="pw"><span>Kode akses</span>
+        <input id="pw" type="password" autocomplete="current-password">
+      </label>
+
+      <button class="go" id="go" type="submit">Periksa</button>
+      <p class="status" id="status" role="status"></p>
+      <p class="ask">Belum punya kode akses? <a id="ask" href="https://wa.me/6289503386642">Minta lewat WhatsApp ↗</a></p>
+      <p class="consent">Periksa hanya sistem milik Anda atau yang sudah memberi izin.</p>
+    </form>
+  </div>
+
+  <section class="leaflet" id="membaca" aria-labelledby="membaca-h">
+    <div class="wrap">
+      <div class="leaflet-head">
+        <h2 id="membaca-h">Memahami hasil pemeriksaan Anda</h2>
+        <p>Komputer kuantum tidak mengancam semua kriptografi, dan tidak semua perbaikan bisa dilakukan hari ini.
+          Bagian ini menjelaskan apa arti tiap baris di lembar hasil, dan kenapa. Status per Oktober 2026; sumber lengkap ada di
+          <a href="/metodologi#sumber">halaman metode</a>.</p>
+      </div>
+
+      <article class="topic" id="apa-yang-diperiksa">
+        <div><h3>Apa yang diperiksa</h3><p class="row-ref">Semua baris</p></div>
+        <div class="body">
+          <p>Saat browser membuka situs HTTPS, tiga hal terjadi dalam sepersekian detik:</p>
+          <ol>
+            <li>Browser dan server menyepakati kunci rahasia lewat <b>key exchange</b>. Baris <a href="#row-kex">Key exchange PQ</a> memeriksa langkah ini.</li>
+            <li>Server menunjukkan <b>sertifikat</b>, semacam KTP digital yang ditandatangani. Baris <a href="#row-cert">Sertifikat</a> memeriksa jenis tanda tangannya.</li>
+            <li>Data dikirim terkunci dengan AES, yang tetap aman.</li>
+          </ol>
+          <p>Komputer kuantum mengancam langkah 1 dan 2. Baris <a href="#row-tls">Versi TLS</a> memeriksa apakah server sudah memakai TLS 1.3,
+            satu-satunya versi tempat key exchange pasca-kuantum tersedia. Baris <a href="#row-ssh">SSH</a> memeriksa pintu login jarak jauh server, yang memakai kriptografi yang sama.</p>
+        </div>
+      </article>
+
+      <article class="topic" id="ancaman">
+        <div><h3>Apa yang dipatahkan komputer kuantum</h3><p class="row-ref">Baris <a href="#row-kex">Key exchange</a>, <a href="#row-cert">Sertifikat</a></p></div>
+        <div class="body">
+          <p><b>Algoritma Shor</b> (1994) memecahkan RSA dan ECC sekaligus, berapa pun ukuran kuncinya, asalkan komputer kuantumnya cukup besar.
+            <b>Algoritma Grover</b> (1996) hanya mempercepat tebak-tebakan kunci, sehingga AES-256 tetap setara 128-bit: masih mustahil ditebak.</p>
+          <div class="scroll"><table>
+            <thead><tr><th>Algoritma</th><th>Nasibnya</th><th>Tindakan</th></tr></thead>
+            <tbody>
+              <tr><td>RSA, ECC (ECDH, X25519)</td><td>Patah</td><td>Ganti ke ML-KEM, hybrid dulu</td></tr>
+              <tr><td>Tanda tangan RSA, ECDSA</td><td>Patah</td><td>Ganti ke ML-DSA atau SLH-DSA</td></tr>
+              <tr><td>AES-256, ChaCha20</td><td>Aman</td><td>Tidak perlu diubah</td></tr>
+              <tr><td>SHA-256, SHA-3</td><td>Aman, sedikit melemah</td><td>SHA-384 ke atas untuk jangka panjang</td></tr>
+            </tbody>
+          </table></div>
+          <p class="note">Karena Shor memecahkan RSA dan ECC sama-sama, SecScan memberi nilai yang sama untuk semua sertifikat klasik. RSA-4096 tidak lebih tahan kuantum daripada ECDSA.</p>
+        </div>
+      </article>
+
+      <article class="topic" id="panen">
+        <div><h3>Panen sekarang, buka nanti</h3><p class="row-ref">Baris <a href="#row-kex">Key exchange</a></p></div>
+        <div class="body">
+          <p>Penyerang bisa merekam lalu lintas terenkripsi hari ini dan menyimpannya sampai komputer kuantum yang cukup besar tersedia.
+            Rekam medis, data kependudukan, dan data keuangan yang harus rahasia bertahun-tahun sudah terancam sekarang.
+            Karena itu key exchange mendapat bobot terbesar: ancamannya berjalan hari ini, dan perbaikannya juga tersedia hari ini.</p>
+          <p>Tanda tangan berbeda. Tanda tangan lama tidak bisa dipalsukan mundur, jadi ancamannya baru nyata saat komputer kuantum ada.
+            Perangkat yang dipakai belasan tahun, seperti mobil, satelit, dan mesin industri, tetap perlu tanda tangan pasca-kuantum sejak dari pabrik.</p>
+          <p><b>Pertidaksamaan Mosca:</b> jika lama data harus rahasia ditambah lama migrasi (biasanya 5–15 tahun) lebih besar dari sisa waktu sampai komputer kuantum tiba, migrasi sudah terlambat.</p>
+        </div>
+      </article>
+
+      <article class="topic" id="qday">
+        <div><h3>Seberapa dekat Q-Day</h3></div>
+        <div class="body">
+          <p>Belum ada komputer kuantum yang bisa memecahkan RSA atau ECC. Tetapi perkiraan sumber daya yang dibutuhkan terus turun:</p>
+          <div class="scroll"><table>
+            <thead><tr><th>Kapan</th><th>Siapa</th><th>Target</th><th class="num">Qubit fisik</th></tr></thead>
+            <tbody>
+              <tr><td>2019</td><td>Gidney &amp; Ekerå (Google)</td><td>RSA-2048</td><td class="num">~20 juta</td></tr>
+              <tr><td>Mei 2025</td><td>Gidney (Google)</td><td>RSA-2048</td><td class="num">&lt; 1 juta</td></tr>
+              <tr><td>Feb 2026</td><td>Iceberg Quantum</td><td>RSA-2048</td><td class="num">&lt; 100 ribu</td></tr>
+              <tr><td>Mar 2026</td><td>Google Quantum AI dkk.</td><td>ECC-256</td><td class="num">&lt; 500 ribu</td></tr>
+            </tbody>
+          </table></div>
+          <p>Dua angka terakhir berasal dari simulasi dengan hardware yang lebih maju dari yang ada sekarang. Mesin terbaik tahun 2026 baru punya
+            sekitar 50–100 qubit logis, sedangkan ECC-256 butuh sekitar 1.200. Jaraknya masih jauh, tapi menyempit lebih cepat dari perkiraan.</p>
+          <p class="note">Berita "kuantum memecahkan RSA" perlu disaring: rekor algoritma Shor yang jujur baru memfaktorkan angka 21.</p>
+        </div>
+      </article>
+
+      <article class="topic" id="standar">
+        <div><h3>Penggantinya sudah standar</h3><p class="row-ref">Baris <a href="#row-kex">Key exchange</a>, <a href="#row-cert">Sertifikat</a></p></div>
+        <div class="body">
+          <p>Kriptografi pasca-kuantum (PQC) adalah matematika baru yang tetap sulit bagi komputer kuantum. Ia berjalan di komputer dan ponsel biasa lewat update software. NIST menetapkannya pada Agustus 2024 setelah kompetisi terbuka delapan tahun.</p>
+          <div class="scroll"><table>
+            <thead><tr><th>Nama</th><th>Standar</th><th>Nama lama</th><th>Untuk</th></tr></thead>
+            <tbody>
+              <tr><td>ML-KEM</td><td>FIPS 203</td><td>Kyber</td><td>Tukar kunci</td></tr>
+              <tr><td>ML-DSA</td><td>FIPS 204</td><td>Dilithium</td><td>Tanda tangan</td></tr>
+              <tr><td>SLH-DSA</td><td>FIPS 205</td><td>SPHINCS+</td><td>Tanda tangan cadangan</td></tr>
+            </tbody>
+          </table></div>
+          <p>Hari ini yang dipakai adalah <b>hybrid</b>: <code>X25519MLKEM768</code> memasang gembok lama dan gembok baru sekaligus, jadi penyerang harus membuka keduanya.
+            Chrome, Edge, Firefox, dan Safari sudah memakainya otomatis, begitu juga OpenSSL 3.5+, Go 1.24+, dan Cloudflare. Server yang menerimanya mendapat nilai penuh di baris key exchange.</p>
+        </div>
+      </article>
+
+      <article class="topic" id="sertifikat">
+        <div><h3>Kenapa sertifikat masih bertanda L</h3><p class="row-ref">Baris <a href="#row-cert">Sertifikat</a></p></div>
+        <div class="body">
+          <p>Hampir setiap situs publik hari ini mendapat tanda L di baris sertifikat, termasuk contoh di atas. Penyebabnya bukan pemilik situs:
+            belum ada CA publik yang menerbitkan sertifikat ML-DSA untuk web, dan browser belum menerimanya. Karena itu nilai tertinggi yang bisa dicapai situs publik saat ini adalah 92.</p>
+          <p>Masalah utamanya ukuran. Satu handshake HTTPS memuat sekitar lima tanda tangan:</p>
+          <div class="scroll"><table>
+            <thead><tr><th>Algoritma</th><th class="num">Kunci publik (byte)</th><th class="num">Tanda tangan (byte)</th></tr></thead>
+            <tbody>
+              <tr><td>ECDSA P-256</td><td class="num">64</td><td class="num">~64–72</td></tr>
+              <tr><td>RSA-2048</td><td class="num">256</td><td class="num">256</td></tr>
+              <tr><td>ML-DSA-44</td><td class="num">1.312</td><td class="num">2.420</td></tr>
+              <tr><td>ML-DSA-65</td><td class="num">1.952</td><td class="num">3.309</td></tr>
+            </tbody>
+          </table></div>
+          <p>Solusi yang sedang disiapkan bernama <b>Merkle Tree Certificates</b>: banyak sertifikat ditandatangani bersama dengan satu tanda tangan.
+            Let's Encrypt menguji cobanya akhir 2026 dan menargetkan produksi 2027; Cloudflare mulai menerbitkan sertifikat PQC pada 2027.</p>
+        </div>
+      </article>
+
+      <article class="topic" id="tenggat">
+        <div><h3>Tenggat waktu</h3></div>
+        <div class="body">
+          <ul>
+            <li><b>NIST IR 8547</b> (draft): RSA-2048 dan setara usang setelah 2030; semua RSA dan ECC dilarang setelah 2035.</li>
+            <li><b>Amerika Serikat:</b> Perintah Presiden 14412 (Juni 2026) menargetkan tukar kunci PQC 31 Desember 2030 dan tanda tangan PQC 31 Desember 2031 untuk sistem bernilai tinggi.</li>
+            <li><b>Uni Eropa dan Inggris:</b> infrastruktur kritis sekitar 2030–2031, selesai 2035.</li>
+            <li><b>Indonesia:</b> BSSN menerbitkan Panduan Migrasi ke Post-Quantum Cryptography v1.0 (Desember 2025), menyarankan ML-KEM-1024 dan ML-DSA-87 secara hybrid, dan sedang menyusun peta jalan nasional lewat gugus tugas (2026). Daftar algoritma kriptografi resmi belum memuat PQC.</li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="topic" id="mitos">
+        <div><h3>Salah kaprah</h3></div>
+        <div class="body">
+          <ul class="myths">
+            <li><s>Komputer kuantum memecahkan semua enkripsi.</s><span>Yang patah hanya kripto kunci publik (RSA, ECC). AES-256 dan SHA-256 tetap aman.</span></li>
+            <li><s>PQC butuh komputer kuantum.</s><span>PQC adalah software biasa dan sudah berjalan di browser Anda.</span></li>
+            <li><s>Cukup perbesar RSA ke 4096 bit.</s><span>Shor tetap memecahkannya; kunci lebih besar hanya sedikit menambah pekerjaan.</span></li>
+            <li><s>AES-256 juga harus diganti.</s><span>Tidak. Yang diganti adalah cara bertukar kunci dan membuktikan identitas.</span></li>
+            <li><s>Sertifikat PQC sudah bisa dipakai di web.</s><span>Belum. Sertifikat PQC untuk web baru mulai 2027.</span></li>
+            <li><s>Masih puluhan tahun lagi, santai saja.</s><span>Data yang direkam hari ini bisa dibuka nanti, dan migrasi butuh 5–15 tahun.</span></li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="topic" id="perbaikan">
+        <div><h3>Memperbaiki temuan</h3><p class="row-ref">Semua baris</p></div>
+        <div class="body">
+          <p><b>Key exchange PQ tidak ada.</b> Perbarui stack TLS. OpenSSL 3.5+ dan Go 1.24+ sudah menawarkan <code>X25519MLKEM768</code>; Caddy 2.10+ mengaktifkannya tanpa konfigurasi. Untuk nginx dengan OpenSSL 3.5+:</p>
+          <pre><code>ssl_protocols TLSv1.3;
+ssl_ecdh_curve X25519MLKEM768:X25519:prime256v1;</code></pre>
+          <p><b>TLS 1.2 atau lebih lama masih aktif.</b> Matikan TLS 1.0 dan 1.1 sekarang. Matikan TLS 1.2 setelah memastikan tidak ada klien lama yang masih membutuhkannya.</p>
+          <p><b>SSH tanpa KEX PQ atau dengan host key RSA.</b> Perbarui ke OpenSSH 9.9+ untuk <code>mlkem768x25519-sha256</code>, hapus host key RSA, atau tutup port SSH dari internet dan akses lewat VPN.</p>
+          <p><b>Sertifikat klasik.</b> Belum bisa diperbaiki untuk situs publik. Pastikan penerbitan sertifikat otomatis (ACME) siap berganti algoritma, catat semua sertifikat, dan tanyakan rencana PQC ke CA Anda.</p>
+        </div>
+      </article>
+    </div>
+  </section>
 </main>
 
+<footer class="foot">
+  <div class="wrap">
+    <span>SecScan PQC oleh <a href="https://miraestudio.id">MiraeStudio.id</a> · sumber terbuka, <a href="https://github.com/Nael-Nathanael/secscan-pqc">Apache-2.0</a></span>
+    <span><a href="/metodologi">Metode &amp; nilai rujukan</a> · <a href="/metodologi#sumber">Sumber</a></span>
+  </div>
+</footer>
+
+<script type="application/json" id="sample">
+{"host":"miraestudio.id","port":443,"ip":"172.67.164.162","score":92,"grade":"A","pqc_status":"SEBAGIAN","duration":6.1,
+ "scanned_at":"2026-10-06T12:01:15+07:00",
+ "components":[
+  {"key":"cert","label":"Sertifikat","max":60,"pct":65,"result":"ECDSA 256-bit","ref":"ML-DSA atau SLH-DSA"},
+  {"key":"kex","label":"Kex PQ","max":100,"pct":100,"result":"X25519MLKEM768","ref":"ML-KEM standar, mis. X25519MLKEM768"},
+  {"key":"tls","label":"TLS","max":40,"pct":100,"result":"TLS 1.3","ref":"TLS 1.3 saja"},
+  {"key":"ssh","label":"SSH","max":50,"pct":100,"result":"tertutup","ref":"tertutup, atau mlkem768x25519 + ed25519 tanpa RSA"}],
+ "details":[["Sertifikat","CN = miraestudio.id"],["Penerbit","C = US, O = Google Trust Services, CN = WE1"],
+  ["Kunci","id-ecPublicKey 256 bit | tanda tangan ecdsa-with-SHA256 | berlaku s/d Nov 08 07:24:38 2026 GMT"],["Validasi rantai","tepercaya"],
+  ["Key exchange PQ","X25519MLKEM768 (didukung), SecP256r1MLKEM768, SecP384r1MLKEM1024, MLKEM768, MLKEM1024, X25519Kyber768Draft00 (didukung), X25519 (didukung)"],
+  ["TLS version","1.3"],["SSH","tertutup pada port 22, 2222"]],
+ "findings":[
+  {"level":"high","title":"Sertifikat klasik (id-ecPublicKey 256 bit)","text":"RSA dan ECC sama-sama dipecahkan algoritma Shor; memperbesar kunci RSA tidak menolong. Siapkan migrasi ke ML-DSA (FIPS 204) atau sertifikat hybrid begitu CA menerbitkannya."},
+  {"level":"info","title":"SSH tertutup","text":"Tidak ada permukaan SSH publik pada port 22, 2222."},
+  {"level":"good","title":"KEX PQ standar (X25519MLKEM768)","text":"Server menerima key exchange ML-KEM (FIPS 203) di TLS 1.3 — SIAP PQC untuk kerahasiaan sesi."}]}
+</script>
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const barColor = p => p >= 90 ? 'var(--green)' : p >= 50 ? 'var(--blue)' : p > 0 ? 'var(--orange)' : 'transparent';
-try { $('#pw').value = localStorage.getItem('scanpw') || ''; } catch (_) {}
-const pqcClass = s => s === 'SIAP PQC' ? 'ok' : s === 'SEBAGIAN' ? 'part' : 'no';
+const NAMES = { kex: 'Key exchange PQ', cert: 'Sertifikat', ssh: 'SSH', tls: 'Versi TLS' };
+const ORDER = ['kex', 'cert', 'ssh', 'tls'];
+const LEVEL = { crit: 'KRITIS', high: 'PERHATIAN', info: 'CATATAN', good: 'BAIK' };
+const STATUS = { 'SIAP PQC': 'siap PQC', 'SEBAGIAN': 'sebagian siap', 'BELUM SIAP': 'belum siap', '-': '–' };
+const when = iso => new Date(iso).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' }) + ' WIB';
 
-function hostCard(r) {
+function flag(pct) {
+  if (pct >= 100) return '<span class="ok" aria-label="dalam rujukan"></span>';
+  if (pct >= 50) return '<span class="L" title="di bawah nilai rujukan">L</span>';
+  return '<span class="crit" title="kritis">!</span>';
+}
+
+function sheet(r, { no, sample, anchors, pdf }) {
+  const host = esc((r.host || r.target) + (r.port && r.port !== 443 ? ':' + r.port : ''));
+  const head = `<div class="sheet-head">
+      <div><div class="sheet-title">Hasil pemeriksaan kesiapan PQC</div>
+        <div class="sheet-sub">Diperiksa dari luar, read-only</div></div>
+      <div class="sheet-no">No. ${esc(no)}${sample ? '<br><span class="sample-tag">CONTOH</span>' : ''}</div>
+    </div>`;
   if (r.error) {
-    return `<div class="card"><div class="host-head"><div><h2>${esc(r.host || r.target)}</h2>
-      <div class="error">Gagal: ${esc(r.error)}</div></div></div></div>`;
+    return `<article class="sheet">${head}
+      <dl class="patient"><div><dt>Host</dt><dd>${host}</dd></div></dl>
+      <p class="sheet-error">Tidak dapat diperiksa: ${esc(r.error)}.</p></article>`;
   }
-  const port = r.port !== 443 ? ':' + r.port : '';
-  const when = r.scanned_at.slice(0, 19).replace('T', ' ');
-  const bars = r.components.map(c => `<div class="bar"><span>${esc(c.label)} (max ${c.max})</span>
-      <div class="track"><div class="fill" style="width:${c.pct}%;background:${barColor(c.pct)}"></div></div>
-      <span class="pct">${c.pct}%</span></div>`).join('');
-  const weights = r.components.map(c => `${c.label} ${c.max}`).join(', ');
-  const details = r.details.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('');
-  const findings = r.findings.map(f => `<div class="finding ${f.level}"><b>${esc(f.title)}</b><span>${esc(f.text)}</span></div>`).join('');
-  return `<div class="card">
-    <div class="host-head">
-      <div><h2>${esc(r.host + port)}</h2>
-        <div class="meta">scan ${esc(when)} · durasi ${r.duration} dtk · IP ${esc(r.ip)}</div>
-        <span class="pqc ${pqcClass(r.pqc_status)}">${esc(r.pqc_status)}</span></div>
-      <div class="score"><div class="n">${r.score}</div><span class="badge g${r.grade}">${r.grade}</span></div>
-    </div>
-    <div class="bars">${bars}</div>
-    <div class="note">Skor komposit ${r.score}/100 dari bobot ${esc(weights)}</div>
-    <table>${details}</table>
-    ${findings ? `<h3>Temuan dan rekomendasi</h3>${findings}` : ''}
-  </div>`;
+  const comps = ORDER.map(k => r.components.find(c => c.key === k)).filter(Boolean);
+  const rows = comps.map((c, i) => `<tr id="${anchors ? 'row-' + c.key : ''}" class="${c.pct < 100 ? 'out' : ''}" style="--i:${i}">
+      <td class="name">${NAMES[c.key]}</td>
+      <td class="val">${esc(c.result)}</td>
+      <td class="ref">${esc(c.ref)}</td>
+      <td class="num" data-label="Nilai">${c.pct}</td>
+      <td class="flag">${flag(c.pct)}</td>
+      <td class="num" data-label="Bobot">${c.max}</td>
+    </tr>`).join('').replace(/ id=""/g, '');
+  const findings = r.findings.map(f => `<li><span class="lvl lvl-${f.level}">${LEVEL[f.level]}</span>
+      <div><b>${esc(f.title)}</b><p>${esc(f.text)}</p></div></li>`).join('');
+  const tech = r.details.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('');
+  return `<article class="sheet">${head}
+    <dl class="patient">
+      <div><dt>Host</dt><dd>${host}</dd></div>
+      <div><dt>Alamat IP</dt><dd>${esc(r.ip)}</dd></div>
+      <div><dt>Waktu pemeriksaan</dt><dd>${esc(when(r.scanned_at))}</dd></div>
+    </dl>
+    <table class="results">
+      <caption>Hasil</caption>
+      <thead><tr><th scope="col">Pemeriksaan</th><th scope="col">Hasil</th><th scope="col">Nilai rujukan</th><th scope="col" class="num">Nilai</th><th scope="col">Flag</th><th scope="col" class="num">Bobot</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr style="--i:${comps.length}"><td colspan="6"><div class="total">
+        <span>Skor komposit, status ${esc(STATUS[r.pqc_status] || r.pqc_status)}</span>
+        <span class="score">${r.score}<span class="mono" style="font-size:16px">/100</span></span>
+        <span class="grade" aria-label="Grade ${r.grade}">${r.grade}</span></div></td></tr></tfoot>
+    </table>
+    <p class="legend">Nilai 0–100 per pemeriksaan. L: di bawah nilai rujukan. !: kritis. Skor komposit = rata-rata tertimbang dengan bobot.
+      <a href="/metodologi#skor">Cara menghitung</a></p>
+    ${findings ? `<section class="conclusion" style="--i:${comps.length + 1}"><h3>Kesimpulan</h3><ol>${findings}</ol></section>` : ''}
+    <details class="tech"><summary>Rincian teknis</summary><table>${tech}</table></details>
+    <div class="sheet-foot"><span>Durasi ${r.duration} detik</span><span>${sample ? '<a href="#membaca">Cara membaca hasil ini</a> · ' : ''}<a class="pdf" href="${pdf}">${sample ? 'Lihat laporan PDF-nya' : 'Unduh PDF'}</a></span></div>
+  </article>`;
+}
+
+function renderSample() {
+  $('#sheets').innerHTML = sheet(JSON.parse($('#sample').textContent), { no: 'CONTOH01-1', sample: true, anchors: true, pdf: '/static/contoh/miraestudio-id.pdf' });
 }
 
 function render(data) {
-  const s = data.summary;
-  const grades = 'ABCDE'.split('').map(g => `<div class="gcount"><small>Grade ${g}</small><span class="badge g${g}">${s.grades[g]}</span></div>`).join('');
-  $('#results').innerHTML = `<div class="card summary">
-      <div><small>Rata-rata skor</small><div class="avg">${s.avg}</div></div>
-      ${grades}
-      <div><small>Host dipindai</small><b>${s.hosts}</b></div>
-      <a class="btn secondary" style="margin-left:auto" href="/api/report/${data.id}.pdf">Unduh laporan PDF</a>
-    </div>` + data.results.map(hostCard).join('');
+  const pdf = `/api/report/${data.id}.pdf`;
+  const code = data.id.slice(0, 8).toUpperCase();
+  let html = '';
+  if (data.results.length > 1) {
+    const rows = data.results.map(r => `<tr><td class="mono">${esc(r.host || r.target)}</td><td class="mono">${r.error ? '–' : r.score}</td><td class="mono">${r.error ? 'gagal' : r.grade}</td></tr>`).join('');
+    html += `<div class="batch"><table><thead><tr><th>Host</th><th>Skor</th><th>Grade</th></tr></thead><tbody>${rows}</tbody></table>
+      <p class="legend">Rata-rata ${data.summary.avg}. <a href="${pdf}">Unduh semua sebagai PDF</a></p></div>`;
+  }
+  html += data.results.map((r, i) => sheet(r, { no: `${code}-${i + 1}`, anchors: false, pdf })).join('');
+  const box = $('#sheets');
+  box.classList.remove('printing');
+  box.innerHTML = html;
+  void box.offsetWidth;
+  box.classList.add('printing');
 }
 
-$('#f').addEventListener('submit', async e => {
+renderSample();
+try { $('#pw').value = localStorage.getItem('scanpw') || ''; } catch (_) {}
+$('#ask').href = 'https://wa.me/6289503386642?text=' + encodeURIComponent('Halo MiraeStudio, saya ingin kode akses SecScan PQC untuk memeriksa: ');
+
+$('#slip').addEventListener('submit', async e => {
   e.preventDefault();
   const targets = $('#targets').value.split(/[\n,]+/).map(t => t.trim()).filter(Boolean);
   const checks = [...document.querySelectorAll('input[name=check]:checked')].map(i => i.value);
   const status = $('#status');
+  const fail = msg => { status.className = 'status err'; status.textContent = msg; };
   status.className = 'status';
-  if (!targets.length) { status.textContent = 'Masukkan minimal satu target.'; return; }
-  if (targets.length > 4) { status.className = 'error'; status.textContent = 'Maksimal 4 target per scan.'; return; }
-  if (!checks.length) { status.className = 'error'; status.textContent = 'Pilih minimal satu metode testing.'; return; }
+  if (!targets.length) return fail('Isi minimal satu target.');
+  if (targets.length > 4) return fail('Maksimal 4 target per pemeriksaan.');
+  if (!checks.length) return fail('Pilih minimal satu panel pemeriksaan.');
   $('#go').disabled = true;
   const t0 = Date.now();
-  const tick = setInterval(() => status.textContent = `Memindai ${targets.length} target… ${Math.round((Date.now() - t0) / 1000)} dtk`, 500);
+  const tick = () => status.textContent = `Memeriksa ${targets.length} target… ${Math.round((Date.now() - t0) / 1000)} detik`;
+  tick();
+  const timer = setInterval(tick, 500);
   try {
     const res = await fetch('/api/scan', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Scan-Password': $('#pw').value }, body: JSON.stringify({ targets, checks }) });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    if (res.status === 401) throw new Error('Kode akses salah. Minta kode lewat WhatsApp di bawah.');
+    if (!res.ok) throw new Error(data.detail || `Server membalas ${res.status}. Coba lagi.`);
     try { localStorage.setItem('scanpw', $('#pw').value); } catch (_) {}
     render(data);
-    status.textContent = `Selesai dalam ${Math.round((Date.now() - t0) / 1000)} dtk.`;
-    $('#results').scrollIntoView({ behavior: 'smooth' });
+    status.textContent = `Selesai dalam ${Math.round((Date.now() - t0) / 1000)} detik.`;
+    $('#sheets').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
   } catch (err) {
-    status.className = 'error';
-    status.textContent = 'Gagal: ' + err.message;
+    fail(err.message === 'Failed to fetch' ? 'Tidak terhubung ke server. Periksa koneksi lalu coba lagi.' : err.message);
   } finally {
-    clearInterval(tick);
+    clearInterval(timer);
     $('#go').disabled = false;
   }
 });
