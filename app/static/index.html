@@ -17,7 +17,7 @@
     <nav aria-label="Utama">
       <a href="/" aria-current="page">Periksa</a>
       <a href="#membaca">Membaca hasil</a>
-      <a href="/metodologi">Metode &amp; nilai rujukan</a>
+      <a href="/metodologi">Metode</a>
       <a href="https://github.com/Nael-Nathanael/secscan-pqc">Kode sumber</a>
     </nav>
   </div>
@@ -26,9 +26,8 @@
 <main>
   <section class="wrap intro">
     <h1>Seberapa siap server Anda menghadapi komputer kuantum?</h1>
-    <p>SecScan memeriksa server dari luar, seperti browser biasa, lalu menulis hasilnya seperti lembar hasil laboratorium:
-      tiap pemeriksaan dibandingkan dengan nilai rujukan. Di bawah ini hasil asli untuk situs kami sendiri, miraestudio.id,
-      lengkap dengan <a href="/static/contoh/miraestudio-id.pdf">laporan PDF-nya</a>.</p>
+    <p>Tiap pemeriksaan dibandingkan dengan nilai rujukannya. Contoh di bawah adalah hasil asli situs kami sendiri,
+      miraestudio.id, beserta <a href="/static/contoh/miraestudio-id.pdf">laporan PDF-nya</a>.</p>
   </section>
 
   <div class="wrap desk">
@@ -59,7 +58,7 @@
 
       <button class="go" id="go" type="submit">Periksa</button>
       <p class="status" id="status" role="status"></p>
-      <p class="ask">Belum punya kode akses? <a id="ask" href="https://wa.me/6289503386642">Minta lewat WhatsApp ↗</a></p>
+      <p class="ask">Belum punya kode akses? <a id="ask" href="https://wa.me/6289503386642">Minta lewat WhatsApp</a></p>
       <p class="consent">Periksa hanya sistem milik Anda atau yang sudah memberi izin.</p>
     </form>
   </div>
@@ -296,7 +295,7 @@ function sheet(r, { no, sample, anchors, pdf }) {
       <a href="/metodologi#skor">Cara menghitung</a></p>
     ${findings ? `<section class="conclusion" style="--i:${comps.length + 1}"><h3>Kesimpulan</h3><ol>${findings}</ol></section>` : ''}
     <details class="tech"><summary>Rincian teknis</summary><table>${tech}</table></details>
-    <div class="sheet-foot"><span>Durasi ${r.duration} detik</span><span>${sample ? '<a href="#membaca">Cara membaca hasil ini</a> · ' : ''}<a class="pdf" href="${pdf}">${sample ? 'Lihat laporan PDF-nya' : 'Unduh PDF'}</a></span></div>
+    <div class="sheet-foot"><span>Akhir hasil · durasi ${r.duration} detik</span><span>${sample ? '<a href="#membaca">Cara membaca hasil ini</a> · ' : ''}<a class="pdf" href="${pdf}">${sample ? 'Lihat laporan PDF-nya' : 'Unduh PDF'}</a></span></div>
   </article>`;
 }
 

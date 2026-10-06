@@ -11,7 +11,18 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import (
+    BaseDocTemplate,
+    Flowable,
+    Frame,
+    KeepTogether,
+    PageBreak,
+    PageTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 from scanner import WIB
 
@@ -188,9 +199,25 @@ def _tech(details):
     return t
 
 
+class _SheetStart(Flowable):
+    """Zero-size marker: records which sheet a page belongs to, for the continuation header."""
+
+    def __init__(self, label):
+        super().__init__()
+        self.label = label
+
+    def wrap(self, *_):
+        return 0, 0
+
+    def draw(self):
+        doc = self.canv._doctemplate
+        doc.sheet_label, doc.sheet_page = self.label, self.canv.getPageNumber()
+
+
 def _sheet(r, created, no):
     when = datetime.fromisoformat(r["scanned_at"]).astimezone(WIB).strftime("%d-%m-%Y %H:%M WIB")
-    out = [_letterhead(created, no), _title(), _patient(r, when)]
+    host = r.get("host") or r["target"]
+    out = [_SheetStart(f"{BRAND} · No. {no} · {host} (lanjutan)"), _letterhead(created, no), _title(), _patient(r, when)]
     if "error" in r:
         return out + [Spacer(1, 10), Paragraph(f"Tidak dapat diperiksa: {_esc(r['error'])}.", S_ERR)]
     out += [Spacer(1, 10), Paragraph("HASIL", S_CAP), Spacer(1, 3), _results(r), Spacer(1, 4),
@@ -234,12 +261,26 @@ def build_pdf(scan):
         canvas.drawRightString(A4[0] - 16 * mm, 11 * mm, f"halaman {doc.page}")
         canvas.restoreState()
 
-    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=14 * mm,
-                            bottomMargin=18 * mm, title="Hasil Pemeriksaan Kesiapan PQC", author=BRAND)
+    def continuation(canvas, doc):
+        if getattr(doc, "sheet_page", None) in (None, canvas.getPageNumber()):
+            return
+        canvas.saveState()
+        canvas.setFont("Mono", 8)
+        canvas.setFillColor(MUTED)
+        canvas.drawString(16 * mm, A4[1] - 11 * mm, doc.sheet_label)
+        canvas.setStrokeColor(RULE)
+        canvas.setLineWidth(0.6)
+        canvas.line(16 * mm, A4[1] - 13 * mm, A4[0] - 16 * mm, A4[1] - 13 * mm)
+        canvas.restoreState()
+
+    doc = BaseDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=16 * mm,
+                          bottomMargin=18 * mm, title="Hasil Pemeriksaan Kesiapan PQC", author=BRAND)
+    frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="body")
+    doc.addPageTemplates([PageTemplate(id="sheet", frames=[frame], onPage=footer, onPageEnd=continuation)])
     story = _batch(scan, created, code) if len(scan["results"]) > 1 else []
     for i, r in enumerate(scan["results"], 1):
         if i > 1:
             story.append(PageBreak())
         story += _sheet(r, created, f"{code}-{i}")
-    doc.build(story, onFirstPage=footer, onLaterPages=footer)
+    doc.build(story)
     return buf.getvalue()
