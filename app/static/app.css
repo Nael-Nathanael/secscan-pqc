@@ -21,7 +21,6 @@
   --teal: #00705f;
   --teal-tint: #e4f1ee;
   --red: #c0262b;
-  --red-tint: #fbeaea;
   --sans: "Atkinson Next", system-ui, sans-serif;
   --mono: "Atkinson Mono", ui-monospace, monospace;
   --gap: clamp(16px, 2.4vw, 28px);
@@ -208,7 +207,7 @@ textarea, input[type="password"] {
   font: 15px/1.5 var(--mono); padding: 9px 10px; border-radius: 0;
 }
 textarea { min-height: 104px; resize: vertical; }
-textarea::placeholder, input::placeholder { color: #6d7a76; }
+textarea::placeholder, input::placeholder { color: #66736f; }
 textarea:focus, input:focus { outline: 2px solid var(--teal); outline-offset: -1px; }
 fieldset { border: 0; padding: 0; margin: 14px 0 0; }
 legend { font-size: 13px; font-weight: 700; padding: 0; margin-bottom: 4px; }

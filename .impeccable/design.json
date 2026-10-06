@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-06T12:30:00+07:00",
+  "title": "Design System: SecScan PQC",
+  "extensions": {
+    "colorMeta": {
+      "desk": { "role": "neutral", "displayName": "Desk", "canonical": "oklch(95.6% 0.003 174.5)", "tonalRamp": ["oklch(15% 0.003 174.5)", "oklch(25% 0.003 174.5)", "oklch(35% 0.003 174.5)", "oklch(45% 0.003 174.5)", "oklch(55% 0.003 174.5)", "oklch(65% 0.003 174.5)", "oklch(80% 0.003 174.5)", "oklch(95.6% 0.003 174.5)"] },
+      "paper": { "role": "neutral", "displayName": "Paper", "canonical": "oklch(100% 0 0)", "tonalRamp": ["oklch(15% 0 0)", "oklch(25% 0 0)", "oklch(35% 0 0)", "oklch(45% 0 0)", "oklch(55% 0 0)", "oklch(65% 0 0)", "oklch(80% 0 0)", "oklch(100% 0 0)"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "oklch(24.9% 0.009 173.4)", "tonalRamp": ["oklch(15% 0.009 173.4)", "oklch(24.9% 0.009 173.4)", "oklch(35% 0.009 173.4)", "oklch(45% 0.009 173.4)", "oklch(55% 0.009 173.4)", "oklch(65% 0.009 173.4)", "oklch(80% 0.009 173.4)", "oklch(95% 0.009 173.4)"] },
+      "muted": { "role": "neutral", "displayName": "Muted Ink", "canonical": "oklch(48.2% 0.015 171.8)", "tonalRamp": ["oklch(15% 0.015 171.8)", "oklch(25% 0.015 171.8)", "oklch(35% 0.015 171.8)", "oklch(48.2% 0.015 171.8)", "oklch(55% 0.015 171.8)", "oklch(65% 0.015 171.8)", "oklch(80% 0.015 171.8)", "oklch(95% 0.015 171.8)"] },
+      "rule": { "role": "neutral", "displayName": "Rule", "canonical": "oklch(85.4% 0.01 171.8)", "tonalRamp": ["oklch(15% 0.01 171.8)", "oklch(25% 0.01 171.8)", "oklch(35% 0.01 171.8)", "oklch(45% 0.01 171.8)", "oklch(55% 0.01 171.8)", "oklch(65% 0.01 171.8)", "oklch(85.4% 0.01 171.8)", "oklch(95% 0.01 171.8)"] },
+      "rule-soft": { "role": "neutral", "displayName": "Soft Rule", "canonical": "oklch(92.7% 0.006 170.4)", "tonalRamp": ["oklch(15% 0.006 170.4)", "oklch(25% 0.006 170.4)", "oklch(35% 0.006 170.4)", "oklch(45% 0.006 170.4)", "oklch(55% 0.006 170.4)", "oklch(65% 0.006 170.4)", "oklch(80% 0.006 170.4)", "oklch(92.7% 0.006 170.4)"] },
+      "teal": { "role": "primary", "displayName": "Lab Teal", "canonical": "oklch(48.8% 0.09 177.3)", "tonalRamp": ["oklch(15% 0.04 177.3)", "oklch(25% 0.06 177.3)", "oklch(35% 0.08 177.3)", "oklch(48.8% 0.09 177.3)", "oklch(55% 0.09 177.3)", "oklch(65% 0.08 177.3)", "oklch(80% 0.05 177.3)", "oklch(95% 0.014 177.3)"] },
+      "teal-tint": { "role": "primary", "displayName": "Slip Tint", "canonical": "oklch(94.8% 0.014 180.7)", "tonalRamp": ["oklch(15% 0.014 180.7)", "oklch(25% 0.014 180.7)", "oklch(35% 0.014 180.7)", "oklch(45% 0.014 180.7)", "oklch(55% 0.014 180.7)", "oklch(65% 0.014 180.7)", "oklch(80% 0.014 180.7)", "oklch(94.8% 0.014 180.7)"] },
+      "red": { "role": "secondary", "displayName": "Flag Red", "canonical": "oklch(52.7% 0.189 25.4)", "tonalRamp": ["oklch(15% 0.06 25.4)", "oklch(25% 0.1 25.4)", "oklch(35% 0.14 25.4)", "oklch(45% 0.17 25.4)", "oklch(52.7% 0.189 25.4)", "oklch(65% 0.15 25.4)", "oklch(80% 0.08 25.4)", "oklch(95% 0.02 25.4)"] },
+      "slip-edge": { "role": "primary", "displayName": "Slip Edge", "canonical": "oklch(85.1% 0.034 180.3)", "tonalRamp": ["oklch(15% 0.034 180.3)", "oklch(25% 0.034 180.3)", "oklch(35% 0.034 180.3)", "oklch(45% 0.034 180.3)", "oklch(55% 0.034 180.3)", "oklch(65% 0.034 180.3)", "oklch(85.1% 0.034 180.3)", "oklch(95% 0.02 180.3)"] },
+      "slip-rule": { "role": "primary", "displayName": "Slip Rule", "canonical": "oklch(87.9% 0.026 178.3)", "tonalRamp": ["oklch(15% 0.026 178.3)", "oklch(25% 0.026 178.3)", "oklch(35% 0.026 178.3)", "oklch(45% 0.026 178.3)", "oklch(55% 0.026 178.3)", "oklch(65% 0.026 178.3)", "oklch(87.9% 0.026 178.3)", "oklch(95% 0.015 178.3)"] },
+      "field-stroke": { "role": "primary", "displayName": "Field Stroke", "canonical": "oklch(77.9% 0.036 180.6)", "tonalRamp": ["oklch(15% 0.036 180.6)", "oklch(25% 0.036 180.6)", "oklch(35% 0.036 180.6)", "oklch(45% 0.036 180.6)", "oklch(55% 0.036 180.6)", "oklch(65% 0.036 180.6)", "oklch(77.9% 0.036 180.6)", "oklch(95% 0.015 180.6)"] }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "The leaflet's opening heading, max 24ch." },
+      "page-title": { "displayName": "Page title", "purpose": "The single h1 above the desk or the method document, max 34ch." },
+      "title": { "displayName": "Title", "purpose": "Leaflet topic headings (22px); method sheet headings use 20px." },
+      "sheet-title": { "displayName": "Sheet title", "purpose": "Uppercase printed heading of a sheet or the slip; captions and the Kesimpulan heading at 13px." },
+      "body": { "displayName": "Body", "purpose": "Prose at 64-72ch; tables at 15px; notes at 13-14px. Tabular figures site-wide." },
+      "label": { "displayName": "Label", "purpose": "Muted column heads, patient-block labels, hints, legend." },
+      "value": { "displayName": "Value", "purpose": "Mono for host, IP, time, results, codes, technical details, input text." },
+      "score": { "displayName": "Score", "purpose": "The composite score beside the grade box." },
+      "flag": { "displayName": "Flag", "purpose": "L and ! flag letters and the grade letter." },
+      "level": { "displayName": "Level", "purpose": "Kesimpulan levels: KRITIS, PERHATIAN, CATATAN, BAIK." }
+    },
+    "shadows": [
+      { "name": "paper-lift", "value": "0 1px 1px rgb(29 35 33 / .1), 0 6px 14px -8px rgb(29 35 33 / .22)", "purpose": "Every result sheet and method sheet; the only lift in the system." },
+      { "name": "joined-sheet", "value": "0 6px 14px -8px rgb(29 35 33 / .22)", "purpose": "Method sheets continuing the one above, with a 1px rule top border." },
+      { "name": "paper-slip", "value": "0 1px 1px rgb(29 35 33 / .1)", "purpose": "The batch summary above multiple sheets." },
+      { "name": "scroll-edge", "value": "radial-gradient(farthest-side at 0 50%, rgb(29 35 33 / .18), transparent) left / 10px 100% no-repeat scroll", "purpose": "Edge shadow on sideways-scrolling tables under 560px, masked by paper-coloured local gradients." }
+    ],
+    "motion": [
+      { "name": "ease-print", "value": "cubic-bezier(.16, 1, .3, 1)", "purpose": "Easing for the print feed and flag stamp." },
+      { "name": "feed", "value": "380ms, clip-path inset(0 0 100% 0) to inset(0), translateY(-6px) to none, 70ms stagger by row index", "purpose": "Results rows, total row and Kesimpulan print in top-down after a scan returns." },
+      { "name": "stamp", "value": "300ms, opacity 0 to 1, scale 1.5 to 1, delay row index x 70ms + 420ms", "purpose": "Flags land after their row has printed." },
+      { "name": "reduced-motion", "value": "prefers-reduced-motion: reduce disables feed and stamp; scroll to sheet is instant", "purpose": "Finished sheet appears at once." }
+    ],
+    "breakpoints": [
+      { "name": "desk-stack", "value": "960px" },
+      { "name": "topic-stack", "value": "760px" },
+      { "name": "results-stack", "value": "680px" },
+      { "name": "nav-row", "value": "600px" },
+      { "name": "narrow", "value": "560px" },
+      { "name": "tiny", "value": "420px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Periksa Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one button: full-width ink submit strip at the foot of the request slip.",
+      "html": "<button class=\"ds-go\" type=\"button\">Periksa</button>",
+      "css": ".ds-go { appearance: none; width: 100%; border: 0; border-radius: 0; cursor: pointer; background: var(--ink, #1d2321); color: #fff; font: 700 16px/1 \"Atkinson Next\", system-ui, sans-serif; padding: 14px; } .ds-go:hover { background: #000; } .ds-go:focus-visible { outline: 2px solid var(--teal, #00705f); outline-offset: 2px; } .ds-go:disabled { cursor: progress; background: var(--muted, #56615d); }"
+    },
+    {
+      "name": "Slip Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Square mono input on paper inside the slip, label above, muted hint below.",
+      "html": "<label class=\"ds-field\"><span>Target</span><textarea class=\"ds-input\" placeholder=\"contoh.go.id\"></textarea><small>Satu per baris, maksimal 4. Port bawaan 443.</small></label>",
+      "css": ".ds-field { display: block; font: 16px/1.55 \"Atkinson Next\", system-ui, sans-serif; color: var(--ink, #1d2321); } .ds-field > span { display: block; font-size: 13px; font-weight: 700; margin-bottom: 4px; } .ds-field small { display: block; color: var(--muted, #56615d); font-size: 12px; margin-top: 4px; } .ds-input { width: 100%; min-height: 104px; resize: vertical; border: 1px solid #9fbfb8; background: #fff; color: var(--ink, #1d2321); font: 15px/1.5 \"Atkinson Mono\", ui-monospace, monospace; padding: 9px 10px; border-radius: 0; } .ds-input:focus { outline: 2px solid var(--teal, #00705f); outline-offset: -1px; }"
+    },
+    {
+      "name": "Letterhead",
+      "kind": "nav",
+      "refersTo": "letterhead",
+      "description": "White band with boxed PQ code, product name, studio credit, and right-aligned nav that turns teal and underlined on hover or current page.",
+      "html": "<header class=\"ds-lh\"><a class=\"ds-brand\" href=\"#\"><span class=\"ds-code\">PQ</span><span class=\"ds-name\">SecScan PQC</span></a><span class=\"ds-by\">oleh <a href=\"#\">MiraeStudio.id</a></span><nav><a href=\"#\" aria-current=\"page\">Periksa</a><a href=\"#\">Membaca hasil</a><a href=\"#\">Metode</a></nav></header>",
+      "css": ".ds-lh { display: flex; align-items: center; gap: 20px; min-height: 64px; flex-wrap: wrap; padding: 10px 20px; background: #fff; border-bottom: 1px solid var(--rule, #c9d1ce); font-family: \"Atkinson Next\", system-ui, sans-serif; color: var(--ink, #1d2321); } .ds-brand { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; } .ds-code { font: 700 13px/1 \"Atkinson Mono\", ui-monospace, monospace; letter-spacing: .04em; border: 1.5px solid currentColor; padding: 5px 5px 4px; } .ds-name { font-weight: 700; font-size: 18px; letter-spacing: -.01em; } .ds-by { color: var(--muted, #56615d); font-size: 13px; } .ds-by a { color: inherit; text-underline-offset: 3px; } .ds-lh nav { margin-left: auto; display: flex; gap: 22px; font-size: 15px; } .ds-lh nav a { color: var(--ink, #1d2321); text-decoration: none; } .ds-lh nav a:hover, .ds-lh nav a[aria-current] { color: var(--teal, #00705f); text-decoration: underline; text-underline-offset: 3px; } .ds-lh a:focus-visible { outline: 2px solid var(--teal, #00705f); outline-offset: 2px; }"
+    },
+    {
+      "name": "Result Sheet",
+      "kind": "card",
+      "refersTo": "sheet",
+      "description": "The signature: sheet head with number and CONTOH tag, patient block, results table with reference values and boxed flags, total with grade box.",
+      "html": "<article class=\"ds-sheet\"><div class=\"ds-head\"><div><div class=\"ds-title\">Hasil pemeriksaan kesiapan PQC</div><div class=\"ds-sub\">Diperiksa dari luar, read-only</div></div><div class=\"ds-no\">No. CONTOH01-1<br><span class=\"ds-tag\">CONTOH</span></div></div><dl class=\"ds-patient\"><div><dt>Host</dt><dd>miraestudio.id</dd></div><div><dt>Alamat IP</dt><dd>172.67.164.162</dd></div><div><dt>Waktu pemeriksaan</dt><dd>6 Okt 2026 12.09 WIB</dd></div></dl><table class=\"ds-results\"><thead><tr><th>Pemeriksaan</th><th>Hasil</th><th>Nilai rujukan</th><th class=\"n\">Nilai</th><th>Flag</th><th class=\"n\">Bobot</th></tr></thead><tbody><tr><td>Key exchange PQ</td><td class=\"v\">X25519MLKEM768</td><td class=\"r\">ML-KEM standar</td><td class=\"n\">100</td><td class=\"f\"></td><td class=\"n\">100</td></tr><tr class=\"out\"><td>Sertifikat</td><td class=\"v\">ECDSA 256-bit</td><td class=\"r\">ML-DSA atau SLH-DSA</td><td class=\"n\">65</td><td class=\"f\"><span class=\"L\">L</span></td><td class=\"n\">60</td></tr><tr class=\"out\"><td>SSH</td><td class=\"v\">RSA host key</td><td class=\"r\">tertutup, atau mlkem768x25519</td><td class=\"n\">30</td><td class=\"f\"><span class=\"crit\">!</span></td><td class=\"n\">50</td></tr></tbody><tfoot><tr><td colspan=\"6\"><div class=\"ds-total\"><span>Skor komposit, status sebagian siap</span><span class=\"ds-score\">92<small>/100</small></span><span class=\"ds-grade\">A</span></div></td></tr></tfoot></table></article>",
+      "css": ".ds-sheet { background: #fff; color: var(--ink, #1d2321); font: 15px/1.55 \"Atkinson Next\", system-ui, sans-serif; font-variant-numeric: tabular-nums; padding: 28px; box-shadow: 0 1px 1px rgb(29 35 33 / .1), 0 6px 14px -8px rgb(29 35 33 / .22); } .ds-head { display: flex; justify-content: space-between; gap: 16px; border-bottom: 2px solid var(--ink, #1d2321); padding-bottom: 12px; } .ds-title { font-size: 15px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; } .ds-sub { color: var(--muted, #56615d); font-size: 13px; } .ds-no { font: 13px/1.4 \"Atkinson Mono\", ui-monospace, monospace; color: var(--muted, #56615d); text-align: right; } .ds-tag { display: inline-block; font: 700 12px/1 \"Atkinson Mono\", ui-monospace, monospace; letter-spacing: .12em; border: 1px solid var(--muted, #56615d); padding: 4px 6px 3px; margin-top: 6px; } .ds-patient { display: grid; grid-template-columns: repeat(3, 1fr); margin: 0; border-bottom: 1px solid var(--rule, #c9d1ce); } .ds-patient div { padding: 10px 12px 10px 0; } .ds-patient dt { font-size: 12px; color: var(--muted, #56615d); } .ds-patient dd { margin: 2px 0 0; font: 15px/1.35 \"Atkinson Mono\", ui-monospace, monospace; } .ds-results { width: 100%; border-collapse: collapse; margin-top: 18px; } .ds-results th { font-size: 12px; font-weight: 400; color: var(--muted, #56615d); text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--ink, #1d2321); } .ds-results td { padding: 10px 10px 10px 0; border-bottom: 1px solid var(--rule-soft, #e3e8e6); vertical-align: top; } .ds-results .v, .ds-results .n { font-family: \"Atkinson Mono\", ui-monospace, monospace; } .ds-results .n { text-align: right; } .ds-results tr:not(.out) .v { color: var(--teal, #00705f); } .ds-results tr.out .v { font-weight: 700; } .ds-results .r { color: var(--muted, #56615d); } .ds-results .f { font: 700 14px/1 \"Atkinson Mono\", ui-monospace, monospace; text-align: center; width: 2.6em; padding-right: 0; } .ds-results .f span { display: inline-block; min-width: 1.9em; padding: 4px 4px 3px; } .ds-results .L { color: var(--red, #c0262b); border: 1.5px solid var(--red, #c0262b); } .ds-results .crit { color: #fff; background: var(--red, #c0262b); border: 1.5px solid var(--red, #c0262b); } .ds-results tfoot td { border-bottom: 0; border-top: 2px solid var(--ink, #1d2321); padding-top: 12px; font-weight: 700; } .ds-total { display: flex; align-items: baseline; gap: 14px; justify-content: flex-end; } .ds-score { font: 700 34px/1 \"Atkinson Mono\", ui-monospace, monospace; } .ds-score small { font-size: 16px; } .ds-grade { font: 700 15px/1 \"Atkinson Mono\", ui-monospace, monospace; border: 1.5px solid var(--ink, #1d2321); padding: 5px 7px 4px; }"
+    },
+    {
+      "name": "Kesimpulan",
+      "kind": "custom",
+      "refersTo": "conclusion",
+      "description": "Ink-boxed conclusion list: mono level column coloured by severity beside a bold title and muted explanation.",
+      "html": "<section class=\"ds-concl\"><h3>Kesimpulan</h3><ol><li><span class=\"ds-lvl hi\">PERHATIAN</span><div><b>Sertifikat klasik</b><p>Siapkan migrasi ke ML-DSA begitu CA menerbitkannya.</p></div></li><li><span class=\"ds-lvl info\">CATATAN</span><div><b>SSH tertutup</b><p>Tidak ada permukaan SSH publik.</p></div></li><li><span class=\"ds-lvl good\">BAIK</span><div><b>KEX PQ standar</b><p>Server menerima ML-KEM di TLS 1.3.</p></div></li></ol></section>",
+      "css": ".ds-concl { border: 1px solid var(--ink, #1d2321); background: #fff; color: var(--ink, #1d2321); font: 16px/1.55 \"Atkinson Next\", system-ui, sans-serif; } .ds-concl h3 { margin: 0; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; padding: 8px 12px; border-bottom: 1px solid var(--ink, #1d2321); } .ds-concl ol { list-style: none; margin: 0; padding: 0; } .ds-concl li { display: grid; grid-template-columns: 92px 1fr; gap: 12px; padding: 10px 12px; border-bottom: 1px solid var(--rule-soft, #e3e8e6); } .ds-concl li:last-child { border-bottom: 0; } .ds-concl p { margin: 2px 0 0; color: var(--muted, #56615d); font-size: 15px; } .ds-lvl { font: 700 11px/1 \"Atkinson Mono\", ui-monospace, monospace; letter-spacing: .08em; padding-top: 4px; } .ds-lvl.hi { color: var(--red, #c0262b); } .ds-lvl.info { color: var(--muted, #56615d); } .ds-lvl.good { color: var(--teal, #00705f); }"
+    },
+    {
+      "name": "Request Slip",
+      "kind": "custom",
+      "refersTo": "request-slip",
+      "description": "Pale teal tear-off form with a dashed perforation, test panels with mono weights, and the Periksa strip.",
+      "html": "<form class=\"ds-slip\"><h2>Formulir pemeriksaan</h2><p class=\"ds-lede\">Hanya membaca balasan pertama server.</p><label class=\"ds-panel\"><input type=\"checkbox\" checked><span>Key exchange PQ (TLS 1.3)</span><em>bobot 100</em></label><label class=\"ds-panel\"><input type=\"checkbox\" checked><span>Sertifikat</span><em>bobot 60</em></label><p class=\"ds-ask\">Belum punya kode akses? <a href=\"#\">Minta lewat WhatsApp</a></p></form>",
+      "css": ".ds-slip { position: relative; width: 340px; background: var(--teal-tint, #e4f1ee); border: 1px solid #b7d6cf; padding: 20px; color: var(--ink, #1d2321); font: 16px/1.55 \"Atkinson Next\", system-ui, sans-serif; } .ds-slip::before { content: \"\"; position: absolute; left: 0; right: 0; top: -1px; border-top: 2px dashed #8fbfb4; } .ds-slip h2 { margin: 0; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; } .ds-lede { font-size: 14px; color: var(--muted, #56615d); margin: 6px 0 14px; } .ds-panel { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid #c6ddd7; font-size: 14px; cursor: pointer; } .ds-panel input { accent-color: var(--teal, #00705f); margin: 0; } .ds-panel em { font: normal 12px \"Atkinson Mono\", ui-monospace, monospace; color: var(--muted, #56615d); } .ds-ask { font-size: 14px; margin: 14px 0 0; padding-top: 12px; border-top: 1px solid #c6ddd7; } .ds-ask a { color: var(--teal, #00705f); text-decoration-thickness: 1px; text-underline-offset: 3px; } .ds-ask a:hover { text-decoration-thickness: 2px; } .ds-ask a:focus-visible { outline: 2px solid var(--teal, #00705f); outline-offset: 2px; }"
+    },
+    {
+      "name": "CONTOH Tag",
+      "kind": "chip",
+      "refersTo": "sample-tag",
+      "description": "Muted outlined mono tag marking sample output; never red, never teal.",
+      "html": "<span class=\"ds-tag\">CONTOH</span>",
+      "css": ".ds-tag { display: inline-block; font: 700 12px/1 \"Atkinson Mono\", ui-monospace, monospace; letter-spacing: .12em; color: var(--muted, #56615d); border: 1px solid var(--muted, #56615d); padding: 4px 6px 3px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Hasil Laboratorium",
+    "overview": "Every surface is a clinic lab result sheet lying on a pale desk. A server is the patient; each check is a row read against its reference value; out-of-range rows carry a boxed flag; a composite score and grade close the table; a Kesimpulan box gives the doctor's reading; a leaflet teaches the reader how to interpret it. The look is borrowed from real Indonesian lab printouts: white paper, near-black ink, hairline rules, a ruled table that does the talking. Nothing is decorated that a lab printer would not print.\n\nDensity is tabular and calm. Text is set in Atkinson Hyperlegible Next, chosen for legibility on phones; every measured value, code, number and identifier is set in Atkinson Hyperlegible Mono with tabular figures, so results line up like a printout. Colour is clinical and scarce: teal says \"in range\" and \"this is a link\", red says \"out of range\", and nothing else gets a hue. The PDF report is the same sheet, not a separate design.\n\nThe world refuses the scanner landing page: no hero band, no centred scan box, no stat strip, no rounded explainer cards, no gradient atmosphere.",
+    "keyCharacteristics": [
+      "Paper sheets on a desk, square corners, lift only from the paper's own shadow.",
+      "Results as a ruled table: Pemeriksaan, Hasil, Nilai rujukan, Nilai, Flag, Bobot.",
+      "Mono for every value; sans for every word.",
+      "Red appears only where a result falls below its reference.",
+      "The request slip is a pale teal form tucked beside the sheet, perforated along its top.",
+      "Rows print in one by one, flags stamp last."
+    ],
+    "rules": [
+      { "name": "The Flag Red Rule", "body": "Red marks a result below its reference value, an error, or a finding that needs attention. It is never a brand accent, never a button, never a highlight.", "section": "colors" },
+      { "name": "The Teal Means In-Range Rule", "body": "Teal on a value means the value meets its reference. Elsewhere teal only marks interaction: links (always underlined), focus, caret. A teal headline or a teal panel fill other than the slip is off-system.", "section": "colors" },
+      { "name": "The CONTOH Rule", "body": "The sample sheet is tagged CONTOH in a muted outlined mono tag. It stays muted; a sample is not a warning and gets neither red nor teal.", "section": "colors" },
+      { "name": "The Printer Rule", "body": "If it was measured, counted, or is an identifier (score, weight, IP, cipher name, sheet number, numeric table cells), it is mono and right-aligned when numeric. Words about it are sans.", "section": "typography" },
+      { "name": "The Tabular Figures Rule", "body": "The whole page sets `font-variant-numeric: tabular-nums`; numbers never shift column.", "section": "typography" },
+      { "name": "The Paper Lift Rule", "body": "Only paper casts a shadow. Buttons, fields, flags, the slip and the leaflet are flat. No hover lift, no glow.", "section": "elevation" },
+      { "name": "The Functional Gradient Rule", "body": "Gradients exist only as the scroll-edge affordance on overflowing tables. No decorative or atmospheric gradients.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do put every new result, score, or check into the sheet anatomy: row with its reference value, flag, weight, then the total and Kesimpulan.",
+      "Do set every measured value, code, and number in Atkinson Hyperlegible Mono with tabular figures; right-align numeric columns.",
+      "Do keep red for below-reference results, errors, and attention-level findings only.",
+      "Do underline every teal link (1px, 3px offset, 2px on hover).",
+      "Do carry any change to the web sheet into `app/report.py` in the same change: same columns, flags, colours, levels and order (Key exchange PQ, Sertifikat, SSH, Versi TLS).",
+      "Do tag sample output CONTOH in the muted outlined tag.",
+      "Do keep the print-feed reveal behind `prefers-reduced-motion: no-preference`.",
+      "Do keep the slip's own teal-grey rules inside the slip; the sheet uses ink, `rule` and `rule-soft`."
+    ],
+    "donts": [
+      "Don't round corners on anything.",
+      "Don't add shadows to anything that is not a sheet of paper, and don't add hover lift.",
+      "Don't use gradients except the scroll-edge affordance on overflowing tables.",
+      "Don't use red or teal as decoration or headline colour; the only red fill is the ! flag, and the slip tint is the only coloured surface.",
+      "Don't build a hero, a centred scan box, a stat strip, or rounded explainer cards.",
+      "Don't invent credentials on the sheet: no doctor, signature, stamp of approval or accreditation mark.",
+      "Don't colour the CONTOH tag."
+    ]
+  }
+}
