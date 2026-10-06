@@ -7,7 +7,7 @@
 <meta name="description" content="Periksa kesiapan sebuah server menghadapi komputer kuantum, lalu pelajari cara membaca hasilnya: key exchange ML-KEM, sertifikat, versi TLS, dan SSH.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='5' y='2' width='22' height='28' fill='white' stroke='%231d2321' stroke-width='2'/><rect x='5' y='2' width='22' height='7' fill='%2300705f'/><path d='M9 15h14M9 20h14M9 25h9' stroke='%231d2321' stroke-width='2'/></svg>">
 <link rel="preload" href="/static/fonts/atkinson-next.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/static/app.css?v=2">
+<link rel="stylesheet" href="/static/app.css?v=ASSET">
 </head>
 <body>
 <header class="letterhead">
@@ -27,7 +27,7 @@
   <section class="wrap intro">
     <h1>Seberapa siap server Anda menghadapi komputer kuantum?</h1>
     <p>Tiap pemeriksaan dibandingkan dengan nilai rujukannya. Contoh di bawah adalah hasil asli situs kami sendiri,
-      miraestudio.id, beserta <a href="/static/contoh/miraestudio-id.pdf?v=2">laporan PDF-nya</a>.</p>
+      miraestudio.id, beserta <a href="/static/contoh/miraestudio-id.pdf?v=ASSET">laporan PDF-nya</a>.</p>
   </section>
 
   <div class="wrap desk">
@@ -300,7 +300,7 @@ function sheet(r, { no, sample, anchors, pdf }) {
 }
 
 function renderSample() {
-  $('#sheets').innerHTML = sheet(JSON.parse($('#sample').textContent), { no: 'CONTOH01-1', sample: true, anchors: true, pdf: '/static/contoh/miraestudio-id.pdf?v=2' });
+  $('#sheets').innerHTML = sheet(JSON.parse($('#sample').textContent), { no: 'CONTOH01-1', sample: true, anchors: true, pdf: '/static/contoh/miraestudio-id.pdf?v=ASSET' });
 }
 
 function render(data) {

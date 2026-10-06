@@ -17,6 +17,14 @@ def test_pages_and_assets(client):
         assert client.get(path).status_code == 200, path
 
 
+def test_asset_urls_carry_content_hash(client):
+    for path in ("/", "/metodologi"):
+        html = client.get(path).text
+        assert "?v=ASSET" not in html
+        assert f"/static/app.css?v={main.ASSET_V}" in html
+    assert re.fullmatch(r"[0-9a-f]{10}", main.ASSET_V)
+
+
 def test_methodology_matches_scoring(client):
     html = client.get("/metodologi").text
     for key, (_label, weight) in scanner.CHECKS.items():

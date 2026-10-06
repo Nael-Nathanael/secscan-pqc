@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import hmac
 import os
 import time
@@ -7,7 +8,7 @@ from collections import OrderedDict, defaultdict, deque
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -27,13 +28,20 @@ STATIC = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 
-@app.middleware("http")
-async def revalidate_static(request: Request, call_next):
-    # Without this, Cloudflare keeps a stale app.css for hours after a deploy.
-    response = await call_next(request)
-    if request.url.path.startswith("/static/"):
-        response.headers["Cache-Control"] = "no-cache"
-    return response
+def _asset_version():
+    # Content hash of the cached assets, so a deploy changes their URLs and no edge cache serves stale copies.
+    h = hashlib.sha256()
+    for path in ("app.css", "contoh/miraestudio-id.pdf"):
+        with open(os.path.join(STATIC, path), "rb") as f:
+            h.update(f.read())
+    return h.hexdigest()[:10]
+
+
+ASSET_V = _asset_version()
+PAGES = {}
+for _name in ("index.html", "metodologi.html"):
+    with open(os.path.join(STATIC, _name), encoding="utf-8") as _f:
+        PAGES[_name] = _f.read().replace("?v=ASSET", f"?v={ASSET_V}")
 
 _sem = asyncio.Semaphore(MAX_CONCURRENT_HOSTS)
 _scans: "OrderedDict[str, dict]" = OrderedDict()
@@ -81,12 +89,12 @@ async def _scan_one(target, checks):
 
 @app.get("/")
 def index():
-    return FileResponse(os.path.join(STATIC, "index.html"))
+    return HTMLResponse(PAGES["index.html"])
 
 
 @app.get("/metodologi")
 def methodology():
-    return FileResponse(os.path.join(STATIC, "metodologi.html"))
+    return HTMLResponse(PAGES["metodologi.html"])
 
 
 @app.get("/healthz")
