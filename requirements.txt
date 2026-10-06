@@ -1,4 +1,4 @@
 fastapi==0.118.*
 uvicorn==0.37.*
-reportlab==4.4.*
+reportlab==5.0.*
 cryptography==46.*
