@@ -26,6 +26,15 @@ app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 STATIC = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
+
+@app.middleware("http")
+async def revalidate_static(request: Request, call_next):
+    # Without this, Cloudflare keeps a stale app.css for hours after a deploy.
+    response = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
 _sem = asyncio.Semaphore(MAX_CONCURRENT_HOSTS)
 _scans: "OrderedDict[str, dict]" = OrderedDict()
 _hits: "defaultdict[str, deque]" = defaultdict(deque)
