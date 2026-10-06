@@ -48,7 +48,8 @@ cp .env.example .env    # optional: set SCAN_PASSWORD, PORT, SITE_NAME
 docker compose up -d --build
 ```
 
-The app listens on `127.0.0.1:${PORT:-8000}`. Put a reverse proxy with TLS in front of it.
+The app listens on `127.0.0.1:${PORT:-8000}`. Put a reverse proxy with TLS in front of it. Host-specific settings can also
+go in a `compose.override.yaml`, which git ignores.
 
 For local development (Python 3.12+):
 
