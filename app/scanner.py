@@ -22,6 +22,8 @@ CHECKS = {
     "ssh": ("SSH", 50),
 }
 SSH_PORTS = (22, 2222)
+# Any trusted classical key (RSA >= 2048, ECC >= 256, EdDSA): Shor breaks them all alike.
+CLASSICAL_CERT_PCT = 65
 
 PQ_SIG_OIDS = {
     "2.16.840.1.101.3.4.3.17": "ML-DSA-44",
@@ -203,14 +205,16 @@ def scan_target(raw, checks):
                 pct = 100
                 _finding(findings, "good", f"Sertifikat PQC ({info['key_label']})",
                          "Kunci dan tanda tangan sertifikat sudah memakai algoritma tahan kuantum (FIPS 204/205).")
-            elif kt == "rsa":
-                pct = 75 if bits >= 4096 else 70 if bits >= 3072 else 65 if bits >= 2048 else 20
-                _finding(findings, "high", f"Cert RSA {bits} bit",
-                         "RSA dapat dipecahkan algoritma Shor; siapkan migrasi ke ML-DSA atau sertifikat hybrid.")
-            elif kt == "ecc":
-                pct = 60
-                _finding(findings, "high", "Cert ECC (ECDSA/ECDH)",
-                         "ECC butuh qubit jauh lebih sedikit daripada RSA untuk dipecahkan Shor; prioritas migrasi TINGGI.")
+            elif kt == "rsa" and bits < 2048 or kt == "ecc" and 0 < bits < 256:
+                pct = 20
+                _finding(findings, "crit", f"Kunci sertifikat terlalu kecil ({info['key_label']})",
+                         "Sudah lemah terhadap komputer klasik; terbitkan ulang dengan ECDSA P-256 atau RSA-2048+ "
+                         "sambil menyiapkan ML-DSA.")
+            elif kt in ("rsa", "ecc"):
+                pct = CLASSICAL_CERT_PCT
+                _finding(findings, "high", f"Sertifikat klasik ({info['key_label']})",
+                         "RSA dan ECC sama-sama dipecahkan algoritma Shor; memperbesar kunci RSA tidak menolong. "
+                         "Siapkan migrasi ke ML-DSA (FIPS 204) atau sertifikat hybrid begitu CA menerbitkannya.")
             else:
                 pct = 20
                 _finding(findings, "crit", "Algoritma kunci sertifikat lemah/tidak dikenal",

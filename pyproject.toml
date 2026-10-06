@@ -1,0 +1,19 @@
+[project]
+name = "secscan-pqc"
+version = "1.1.0"
+description = "Outside-in post-quantum cryptography readiness scanner"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+pythonpath = ["app"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py312"
+src = ["app"]
+
+[tool.ruff.lint]
+# Probes catch broad exceptions on purpose: any failure means "not supported".
+select = ["E", "F", "W", "B", "I"]
