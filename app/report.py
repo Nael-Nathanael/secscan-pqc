@@ -16,7 +16,8 @@ from reportlab.platypus import Flowable, HRFlowable, KeepTogether, Paragraph, Si
 from scanner import WIB
 
 BRAND = os.environ.get("BRAND_NAME", "SecScan PQC")
-SITE = os.environ.get("SITE_NAME", "sec-scan.miraestudio.id")
+SITE = os.environ.get("SITE_NAME", "")
+MADE_BY = f"{BRAND}, {SITE}" if SITE else BRAND
 
 INK = colors.HexColor("#111827")
 MUTED = colors.HexColor("#6b7280")
@@ -115,7 +116,8 @@ class Bar(Flowable):
 
 def _header(created):
     title = Paragraph(f"Laporan Hasil Scan Kesiapan PQC<br/>PQC Readiness oleh {_esc(BRAND)}", S_TITLE)
-    sub = Paragraph(f"{_esc(SITE)} | dibuat {created.strftime('%d-%m-%Y %H:%M:%S')} WIB | "
+    site = f"{_esc(SITE)} | " if SITE else ""
+    sub = Paragraph(f"{site}dibuat {created.strftime('%d-%m-%Y %H:%M:%S')} WIB | "
                     f"scan read-only dari sisi luar", S_SUB)
     t = Table([[logo(), [title, Spacer(1, 3), sub]]], colWidths=[16 * mm, None])
     t.setStyle(TableStyle([
@@ -209,7 +211,7 @@ def build_pdf(scan):
         canvas.saveState()
         canvas.setFont("Helvetica", 7.5)
         canvas.setFillColor(colors.HexColor("#9ca3af"))
-        canvas.drawCentredString(A4[0] / 2, 12 * mm, f"Dibuat oleh {BRAND}, {SITE} | halaman {doc.page}")
+        canvas.drawCentredString(A4[0] / 2, 12 * mm, f"Dibuat oleh {MADE_BY} | halaman {doc.page}")
         canvas.restoreState()
 
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,
@@ -225,6 +227,7 @@ def build_pdf(scan):
         HRFlowable(width="100%", thickness=0.6, color=LINE, spaceAfter=4),
         Paragraph("<b>Sumber rujukan</b>", S_CELL),
         Paragraph(REFERENCES, S_REF),
+        *([Paragraph(f"Cara menghitung skor: https://{_esc(SITE)}/metodologi", S_REF)] if SITE else []),
     ]))
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
     return buf.getvalue()

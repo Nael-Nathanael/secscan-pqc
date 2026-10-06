@@ -4,12 +4,11 @@ services:
     image: sec-scan:latest
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3106:8000"
-    env_file: .env
-    environment:
-      BRAND_NAME: ${BRAND_NAME:-SecScan PQC}
-      SITE_NAME: sec-scan.miraestudio.id
-    # Keep cyrene safe: hard RAM cap (no swap beyond it), 1 CPU, bounded threads.
+      - "127.0.0.1:${PORT:-8000}:8000"
+    env_file:
+      - path: .env
+        required: false
+    # Hard limits so a burst of scans cannot starve the host.
     mem_limit: 256m
     memswap_limit: 256m
     cpus: 1.0
