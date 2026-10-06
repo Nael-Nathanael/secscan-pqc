@@ -1,0 +1,4 @@
+fastapi==0.118.*
+uvicorn==0.37.*
+reportlab==4.4.*
+cryptography==46.*

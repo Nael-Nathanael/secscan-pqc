@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SecScan PQC</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='15' fill='%232563eb'/><polygon points='22,19.5 16,23 10,19.5 10,12.5 16,9 22,12.5' fill='none' stroke='white' stroke-width='2'/></svg>">
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --ink: #111827; --muted: #6b7280; --line: #e5e7eb;
+    --blue: #2563eb; --green: #15803d; --lime: #65a30d; --orange: #d97706; --dorange: #ea580c; --red: #dc2626;
+    --crit-bg: #fef2f2; --high-bg: #fffbeb; --info-bg: #eff6ff; --good-bg: #f0fdf4; --high-fg: #b45309; --info-fg: #1d4ed8;
+    --track: #f3f4f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0f17; --card: #121826; --ink: #e5e7eb; --muted: #9ca3af; --line: #253047; --track: #1f2937;
+      --crit-bg: #2a1215; --high-bg: #2a1f0d; --info-bg: #0f1d3a; --good-bg: #0d2318; --high-fg: #fbbf24; --info-fg: #93c5fd;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  header h1 { font-size: 20px; margin: 0; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  textarea { width: 100%; min-height: 120px; resize: vertical; padding: 12px; border-radius: 8px; border: 1px solid var(--line);
+             background: var(--bg); color: var(--ink); font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  textarea:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+  .label { font-weight: 600; font-size: 13px; margin: 0 0 6px; display: block; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin-top: 16px; }
+  .methods label { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; cursor: pointer; }
+  .methods label:has(input:checked) { border-color: var(--blue); background: var(--info-bg); }
+  .methods input { margin-top: 3px; accent-color: var(--blue); }
+  .methods b { display: block; font-size: 14px; }
+  .methods small { color: var(--muted); font-size: 12px; line-height: 1.35; display: block; }
+  .actions { display: flex; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+  #pw { padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; width: 180px; }
+  #pw:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+  button, .btn { appearance: none; border: 0; border-radius: 8px; padding: 10px 18px; font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1; cursor: pointer;
+                 background: var(--blue); color: #fff; text-decoration: none; display: inline-block; }
+  button:disabled { opacity: .6; cursor: progress; }
+  .btn.secondary { background: transparent; color: var(--blue); border: 1px solid var(--blue); }
+  .status { color: var(--muted); font-size: 13px; }
+  .error { color: var(--red); font-size: 13px; }
+  #results { margin-top: 24px; display: grid; gap: 16px; }
+  .summary { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+  .summary .avg { font-size: 30px; font-weight: 700; color: var(--blue); line-height: 1; }
+  .summary small { color: var(--muted); font-size: 12px; display: block; }
+  .gcount { text-align: center; }
+  .badge { display: inline-block; min-width: 26px; padding: 2px 8px; border-radius: 5px; color: #fff; font-weight: 700; font-size: 13px; text-align: center; }
+  .gA { background: var(--green); } .gB { background: var(--lime); } .gC { background: var(--orange); } .gD { background: var(--dorange); } .gE { background: var(--red); }
+  .host-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .host-head h2 { margin: 0; font-size: 18px; word-break: break-all; }
+  .meta { color: var(--muted); font-size: 12px; }
+  .score { text-align: right; }
+  .score .n { font-size: 30px; font-weight: 700; line-height: 1; }
+  .pqc { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; margin-top: 6px; }
+  .pqc.ok { background: var(--good-bg); color: var(--green); } .pqc.part { background: var(--high-bg); color: var(--high-fg); } .pqc.no { background: var(--crit-bg); color: var(--red); }
+  .bars { margin: 16px 0 6px; display: grid; gap: 6px; }
+  .bar { display: grid; grid-template-columns: 130px 1fr 44px; gap: 10px; align-items: center; font-size: 13px; }
+  .track { height: 12px; border-radius: 99px; background: var(--track); border: 1px solid var(--line); overflow: hidden; }
+  .fill { height: 100%; border-radius: 99px; }
+  .pct { text-align: right; font-weight: 700; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .note { color: var(--muted); font-size: 12px; font-style: italic; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+  td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+  td:first-child { font-weight: 600; width: 150px; }
+  h3 { font-size: 15px; margin: 18px 0 6px; }
+  .finding { display: grid; grid-template-columns: 220px 1fr; gap: 10px; padding: 7px 10px; font-size: 13px; border-radius: 6px; margin-bottom: 4px; }
+  .finding b { font-weight: 700; }
+  .crit { background: var(--crit-bg); } .crit b { color: var(--red); }
+  .high { background: var(--high-bg); } .high b { color: var(--high-fg); }
+  .info { background: var(--info-bg); } .info b { color: var(--info-fg); }
+  .good { background: var(--good-bg); } .good b { color: var(--green); }
+  footer { color: var(--muted); font-size: 12px; margin-top: 28px; text-align: center; }
+  @media (max-width: 600px) {
+    .bar { grid-template-columns: 90px 1fr 40px; }
+    .finding { grid-template-columns: 1fr; gap: 2px; }
+    td:first-child { width: 110px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <svg width="36" height="36" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#2563eb"/><polygon points="22,19.5 16,23 10,19.5 10,12.5 16,9 22,12.5" fill="none" stroke="#fff" stroke-width="2"/><circle cx="16" cy="16" r="2" fill="#fff"/></svg>
+    <div>
+      <h1>Scan Kesiapan PQC</h1>
+      <p>Cek kesiapan kriptografi tahan kuantum dari sisi luar — read-only, tanpa mengubah apa pun di server.</p>
+    </div>
+  </header>
+
+  <form id="f" class="card">
+    <label class="label" for="targets">Domain atau IP (satu per baris, maks 4)</label>
+    <textarea id="targets" spellcheck="false" placeholder="contoh.go.id&#10;bank.co.id:8443&#10;203.0.113.10" required></textarea>
+    <div class="hint">Port default 443. Tulis <code>host:port</code> untuk port lain. Durasi ±5–30 detik per target.</div>
+
+    <span class="label" style="margin-top:16px">Metode testing</span>
+    <div class="methods">
+      <label><input type="checkbox" name="check" value="kex" checked><span><b>KEX PQ (TLS 1.3)</b><small>ML-KEM hybrid: X25519MLKEM768, SecP256r1MLKEM768, MLKEM1024… · bobot 100</small></span></label>
+      <label><input type="checkbox" name="check" value="cert" checked><span><b>Sertifikat</b><small>Jenis &amp; ukuran kunci, tanda tangan (RSA/ECC/ML-DSA), validitas · bobot 60</small></span></label>
+      <label><input type="checkbox" name="check" value="tls" checked><span><b>Versi TLS</b><small>TLS 1.3 wajib, 1.2 diminimalkan, 1.0/1.1 dilarang · bobot 40</small></span></label>
+      <label><input type="checkbox" name="check" value="ssh" checked><span><b>SSH</b><small>Port 22/2222: host key &amp; PQ KEX (mlkem768x25519, sntrup761) · bobot 50</small></span></label>
+    </div>
+
+    <div class="actions">
+      <input id="pw" type="password" placeholder="Password" autocomplete="current-password" required aria-label="Password">
+      <button id="go" type="submit">Mulai scan</button>
+      <span id="status" class="status" aria-live="polite"></span>
+    </div>
+  </form>
+
+  <section id="results"></section>
+  <footer>Skor komposit 0–100 = rata-rata tertimbang metode yang dipilih. Rujukan: NIST FIPS 203/204/205, NIST IR 8547.</footer>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const barColor = p => p >= 90 ? 'var(--green)' : p >= 50 ? 'var(--blue)' : p > 0 ? 'var(--orange)' : 'transparent';
+try { $('#pw').value = localStorage.getItem('scanpw') || ''; } catch (_) {}
+const pqcClass = s => s === 'SIAP PQC' ? 'ok' : s === 'SEBAGIAN' ? 'part' : 'no';
+
+function hostCard(r) {
+  if (r.error) {
+    return `<div class="card"><div class="host-head"><div><h2>${esc(r.host || r.target)}</h2>
+      <div class="error">Gagal: ${esc(r.error)}</div></div></div></div>`;
+  }
+  const port = r.port !== 443 ? ':' + r.port : '';
+  const when = r.scanned_at.slice(0, 19).replace('T', ' ');
+  const bars = r.components.map(c => `<div class="bar"><span>${esc(c.label)} (max ${c.max})</span>
+      <div class="track"><div class="fill" style="width:${c.pct}%;background:${barColor(c.pct)}"></div></div>
+      <span class="pct">${c.pct}%</span></div>`).join('');
+  const weights = r.components.map(c => `${c.label} ${c.max}`).join(', ');
+  const details = r.details.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('');
+  const findings = r.findings.map(f => `<div class="finding ${f.level}"><b>${esc(f.title)}</b><span>${esc(f.text)}</span></div>`).join('');
+  return `<div class="card">
+    <div class="host-head">
+      <div><h2>${esc(r.host + port)}</h2>
+        <div class="meta">scan ${esc(when)} · durasi ${r.duration} dtk · IP ${esc(r.ip)}</div>
+        <span class="pqc ${pqcClass(r.pqc_status)}">${esc(r.pqc_status)}</span></div>
+      <div class="score"><div class="n">${r.score}</div><span class="badge g${r.grade}">${r.grade}</span></div>
+    </div>
+    <div class="bars">${bars}</div>
+    <div class="note">Skor komposit ${r.score}/100 dari bobot ${esc(weights)}</div>
+    <table>${details}</table>
+    ${findings ? `<h3>Temuan dan rekomendasi</h3>${findings}` : ''}
+  </div>`;
+}
+
+function render(data) {
+  const s = data.summary;
+  const grades = 'ABCDE'.split('').map(g => `<div class="gcount"><small>Grade ${g}</small><span class="badge g${g}">${s.grades[g]}</span></div>`).join('');
+  $('#results').innerHTML = `<div class="card summary">
+      <div><small>Rata-rata skor</small><div class="avg">${s.avg}</div></div>
+      ${grades}
+      <div><small>Host dipindai</small><b>${s.hosts}</b></div>
+      <a class="btn secondary" style="margin-left:auto" href="/api/report/${data.id}.pdf">Unduh laporan PDF</a>
+    </div>` + data.results.map(hostCard).join('');
+}
+
+$('#f').addEventListener('submit', async e => {
+  e.preventDefault();
+  const targets = $('#targets').value.split(/[\n,]+/).map(t => t.trim()).filter(Boolean);
+  const checks = [...document.querySelectorAll('input[name=check]:checked')].map(i => i.value);
+  const status = $('#status');
+  status.className = 'status';
+  if (!targets.length) { status.textContent = 'Masukkan minimal satu target.'; return; }
+  if (targets.length > 4) { status.className = 'error'; status.textContent = 'Maksimal 4 target per scan.'; return; }
+  if (!checks.length) { status.className = 'error'; status.textContent = 'Pilih minimal satu metode testing.'; return; }
+  $('#go').disabled = true;
+  const t0 = Date.now();
+  const tick = setInterval(() => status.textContent = `Memindai ${targets.length} target… ${Math.round((Date.now() - t0) / 1000)} dtk`, 500);
+  try {
+    const res = await fetch('/api/scan', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Scan-Password': $('#pw').value }, body: JSON.stringify({ targets, checks }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    try { localStorage.setItem('scanpw', $('#pw').value); } catch (_) {}
+    render(data);
+    status.textContent = `Selesai dalam ${Math.round((Date.now() - t0) / 1000)} dtk.`;
+    $('#results').scrollIntoView({ behavior: 'smooth' });
+  } catch (err) {
+    status.className = 'error';
+    status.textContent = 'Gagal: ' + err.message;
+  } finally {
+    clearInterval(tick);
+    $('#go').disabled = false;
+  }
+});
+</script>
+</body>
+</html>
