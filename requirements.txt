@@ -1,4 +1,6 @@
-fastapi==0.142.*
+fastapi==0.162.*
 uvicorn==0.54.*
-reportlab==5.0.*
+reportlab==5.1.*
+# reportlab's own floor (>=9) still allows Pillow releases with critical CVEs.
+pillow==13.*
 cryptography==50.*

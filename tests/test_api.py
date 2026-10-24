@@ -36,6 +36,17 @@ def test_asset_urls_carry_content_hash(client):
     assert re.fullmatch(r"[0-9a-f]{10}", main.ASSET_V)
 
 
+@pytest.mark.parametrize("path", ["/", "/static/app.js", "/healthz"])
+def test_security_headers(client, path):
+    h = client.get(path).headers
+    assert "script-src 'self';" in h["content-security-policy"]
+    assert "frame-ancestors 'none'" in h["content-security-policy"]
+    assert h["strict-transport-security"].startswith("max-age=31536000")
+    assert h["x-content-type-options"] == "nosniff"
+    assert h["x-frame-options"] == "DENY"
+    assert h["referrer-policy"] == "strict-origin-when-cross-origin"
+
+
 @pytest.mark.parametrize("path,phrase", [
     ("/metodologi", "situs publik hari ini adalah {best}"),
     ("/en/methodology", "highest score a public site can reach today is {best}"),
