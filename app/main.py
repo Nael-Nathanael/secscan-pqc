@@ -29,9 +29,11 @@ STATIC = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 # style-src-attr: app.js renders report rows with inline style="--i:n" for the stagger animation.
+# cloudflareinsights: the Web Analytics beacon Cloudflare injects at the edge.
 SECURITY_HEADERS = {
-    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; "
-    "img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; "
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; "
+    "style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data:; font-src 'self'; "
+    "connect-src 'self' https://cloudflareinsights.com; object-src 'none'; base-uri 'self'; "
     "form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
     "X-Content-Type-Options": "nosniff",

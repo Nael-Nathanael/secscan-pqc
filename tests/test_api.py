@@ -39,7 +39,7 @@ def test_asset_urls_carry_content_hash(client):
 @pytest.mark.parametrize("path", ["/", "/static/app.js", "/healthz"])
 def test_security_headers(client, path):
     h = client.get(path).headers
-    assert "script-src 'self';" in h["content-security-policy"]
+    assert "script-src 'self' https://static.cloudflareinsights.com;" in h["content-security-policy"]
     assert "frame-ancestors 'none'" in h["content-security-policy"]
     assert h["strict-transport-security"].startswith("max-age=31536000")
     assert h["x-content-type-options"] == "nosniff"
